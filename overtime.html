@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overtime Sheet — އިތުރުގަޑީގެ ޙާޟިރީ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri&family=Noto+Sans+Thaana:wght@400;500;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================== tokens ============================== */
+:root{
+  --primary:#00696e; --on-primary:#ffffff;
+  --primary-container:#9cf0f5; --on-primary-container:#002022;
+  --secondary:#4a6363; --secondary-container:#cce8e7;
+  --surface:#fbfdfd; --surface-1:#f2f8f8; --surface-2:#eaf2f2;
+  --surface-3:#e2ecec; --surface-4:#dbe7e7;
+  --on-surface:#191c1c; --on-surface-var:#3f4949;
+  --outline:#6f7979; --outline-var:#c3cccc;
+  --error:#ba1a1a; --error-container:#ffdad6; --on-error-container:#410002;
+  --warn:#7a5900; --warn-container:#ffdf9a;
+  --r-xs:4px; --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:28px;
+  --e1:0 1px 2px rgba(0,0,0,.30),0 1px 3px 1px rgba(0,0,0,.15);
+  --e2:0 1px 2px rgba(0,0,0,.30),0 2px 6px 2px rgba(0,0,0,.15);
+  --e3:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px rgba(0,0,0,.30);
+  --thaana:'Faruma','A_Faruma','MV Faseyha','MV Boli','Noto Sans Thaana',sans-serif;
+  --latin:'Roboto','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--latin); background:var(--surface-1); color:var(--on-surface);
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+.dv{font-family:var(--thaana); direction:rtl; line-height:2.05}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--primary); outline-offset:2px; border-radius:var(--r-xs)}
+
+/* ============================== app bar ============================== */
+.appbar{
+  position:sticky; top:0; z-index:40; background:var(--surface);
+  border-bottom:1px solid var(--outline-var);
+}
+.appbar-row{
+  max-width:1180px; margin:0 auto; padding:10px 16px;
+  display:flex; align-items:center; gap:12px;
+}
+.brand{display:flex; align-items:center; gap:12px; min-width:0}
+.brand .mark{
+  width:40px; height:40px; border-radius:var(--r-m); flex:none;
+  background:var(--primary-container); display:grid; place-items:center;
+}
+.brand .mark img{width:26px; height:28px; object-fit:contain}
+.brand h1{font-size:16px; font-weight:500; margin:0; letter-spacing:.1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.brand p{margin:0; font-size:12px; color:var(--on-surface-var); font-family:var(--thaana); direction:rtl}
+.appbar-actions{margin-inline-start:auto; display:flex; gap:8px; align-items:center}
+
+/* ============================== buttons ============================== */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  height:40px; padding:0 20px; border-radius:20px; border:none; cursor:pointer;
+  font-size:14px; font-weight:500; letter-spacing:.1px; background:none;
+  color:var(--primary); transition:background .15s, box-shadow .15s;
+}
+.btn svg{width:18px; height:18px; flex:none}
+.btn:hover{background:rgba(0,105,110,.08)}
+.btn.filled{background:var(--primary); color:var(--on-primary)}
+.btn.filled:hover{background:#005257; box-shadow:var(--e1)}
+.btn.tonal{background:var(--secondary-container); color:#0a1f1f}
+.btn.tonal:hover{background:#bcdedd}
+.btn.outlined{border:1px solid var(--outline); background:var(--surface)}
+.btn.outlined:hover{background:var(--surface-3)}
+.btn.danger{color:var(--error)}
+.btn.danger:hover{background:rgba(186,26,26,.08)}
+.btn.small{height:32px; padding:0 14px; font-size:13px; border-radius:16px}
+.btn.icon{width:40px; height:40px; padding:0; border-radius:50%}
+.btn.icon.small{width:32px; height:32px}
+.btn:disabled{opacity:.38; cursor:not-allowed; background:none; box-shadow:none}
+
+/* ============================== tabs ============================== */
+.tabs{background:var(--surface); border-bottom:1px solid var(--outline-var); position:sticky; top:61px; z-index:35}
+.tabs-inner{max-width:1180px; margin:0 auto; display:flex; overflow-x:auto; scrollbar-width:none}
+.tabs-inner::-webkit-scrollbar{display:none}
+.tab{
+  flex:1 0 auto; min-width:104px; height:48px; border:none; background:none; cursor:pointer;
+  font-size:14px; font-weight:500; color:var(--on-surface-var); position:relative;
+  display:flex; align-items:center; justify-content:center; gap:8px; padding:0 16px;
+}
+.tab svg{width:18px;height:18px}
+.tab[aria-selected="true"]{color:var(--primary)}
+.tab[aria-selected="true"]::after{
+  content:''; position:absolute; inset-inline:12px; bottom:0; height:3px;
+  background:var(--primary); border-radius:3px 3px 0 0;
+}
+.tab .count{
+  font-size:11px; min-width:20px; height:18px; padding:0 6px; border-radius:9px;
+  background:var(--surface-3); display:grid; place-items:center; font-weight:600;
+}
+.tab[aria-selected="true"] .count{background:var(--primary-container)}
+
+/* ============================== layout ============================== */
+main{max-width:1180px; margin:0 auto; padding:20px 16px 120px}
+.panel[hidden]{display:none}
+.card{background:var(--surface); border-radius:var(--r-m); padding:20px; margin-bottom:16px; box-shadow:var(--e1)}
+.card.flat{box-shadow:none; border:1px solid var(--outline-var)}
+.card > h2{
+  margin:0 0 4px; font-size:16px; font-weight:500; display:flex; align-items:center; gap:10px;
+}
+.card > h2 svg{width:20px;height:20px;color:var(--primary)}
+.card > .sub{margin:0 0 18px; font-size:13px; color:var(--on-surface-var)}
+.grid{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.grid.two{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.span2{grid-column:span 2}
+@media (max-width:640px){.span2{grid-column:span 1}}
+
+/* ============================== text fields ============================== */
+.tf{position:relative; min-width:0}
+.tf > label{
+  position:absolute; top:-7px; inset-inline-start:12px; padding:0 5px; z-index:1;
+  background:var(--surface); font-size:11px; font-weight:500; color:var(--on-surface-var);
+  letter-spacing:.3px; pointer-events:none; max-width:calc(100% - 24px);
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+}
+.tf > label .dvlab{font-family:var(--thaana); font-size:12px}
+.tf input, .tf textarea, .tf select{
+  width:100%; font:inherit; font-size:15px; color:var(--on-surface);
+  background:transparent; border:1px solid var(--outline); border-radius:var(--r-xs);
+  padding:13px 14px; transition:border-color .12s, box-shadow .12s;
+}
+.tf textarea{resize:vertical; min-height:76px}
+.tf select{appearance:none; cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233f4949'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat:no-repeat; background-position:right 10px center; background-size:20px; padding-right:36px}
+.tf input:hover,.tf textarea:hover,.tf select:hover{border-color:var(--on-surface)}
+.tf input:focus,.tf textarea:focus,.tf select:focus{
+  outline:none; border-color:var(--primary); box-shadow:inset 0 0 0 1px var(--primary)}
+.tf:focus-within > label{color:var(--primary)}
+.tf.rtl input,.tf.rtl textarea{font-family:var(--thaana); direction:rtl; text-align:right; line-height:2}
+.tf.rtl > label{inset-inline-start:auto; inset-inline-end:12px}
+.tf .hint{font-size:11px; color:var(--on-surface-var); margin:5px 12px 0}
+.tf.bad input{border-color:var(--error); box-shadow:inset 0 0 0 1px var(--error)}
+.tf.bad .hint{color:var(--error)}
+
+/* ============================== switch ============================== */
+.sw{display:flex; align-items:center; gap:12px; cursor:pointer; user-select:none; padding:6px 2px}
+.sw input{position:absolute; opacity:0; width:0; height:0}
+.sw .track{
+  width:50px; height:30px; border-radius:15px; background:var(--surface-4);
+  border:2px solid var(--outline); position:relative; transition:.16s; flex:none;
+}
+.sw .track::after{
+  content:''; position:absolute; top:50%; inset-inline-start:5px; width:16px; height:16px;
+  border-radius:50%; background:var(--outline); transform:translateY(-50%); transition:.16s;
+}
+.sw input:checked + .track{background:var(--primary); border-color:var(--primary)}
+.sw input:checked + .track::after{inset-inline-start:25px; width:22px; height:22px; background:#fff}
+.sw input:focus-visible + .track{outline:3px solid var(--primary); outline-offset:2px}
+.sw .lbl{font-size:14px}
+.sw .lbl small{display:block; font-size:11.5px; color:var(--on-surface-var)}
+
+/* ============================== entries ============================== */
+.entry{
+  background:var(--surface); border:1px solid var(--outline-var); border-radius:var(--r-m);
+  margin-bottom:12px; overflow:hidden; transition:border-color .15s;
+}
+.entry.open{border-color:var(--primary); box-shadow:var(--e1)}
+.entry-head{display:flex; align-items:center; gap:10px; padding:10px 8px 10px 14px; cursor:pointer}
+.entry-head .idx{
+  width:30px; height:30px; border-radius:50%; background:var(--surface-3); flex:none;
+  display:grid; place-items:center; font-size:13px; font-weight:600; color:var(--on-surface-var);
+}
+.entry.open .entry-head .idx{background:var(--primary); color:#fff}
+.entry-sum{min-width:0; flex:1; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px}
+.entry-sum .d{font-size:15px; font-weight:500; white-space:nowrap}
+.entry-sum .dv{font-size:13px; color:var(--on-surface-var)}
+.entry-sum .t{font-size:13px; color:var(--on-surface-var); font-variant-numeric:tabular-nums}
+.chip{
+  display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 9px;
+  border-radius:8px; font-size:11.5px; font-weight:500; background:var(--surface-3);
+  color:var(--on-surface-var); white-space:nowrap;
+}
+.chip.tot{background:var(--primary-container); color:var(--on-primary-container); font-variant-numeric:tabular-nums}
+.chip.hol{background:var(--warn-container); color:var(--warn)}
+.chip.warnc{background:var(--error-container); color:var(--on-error-container)}
+.chip.sig{background:var(--secondary-container); color:#0a1f1f}
+.entry-body{padding:4px 16px 18px; border-top:1px solid var(--outline-var)}
+.subhead{
+  font-size:11px; font-weight:700; letter-spacing:.6px; color:var(--on-surface-var);
+  margin:20px 0 12px; display:flex; align-items:center; gap:10px;
+}
+.subhead::after{content:''; flex:1; height:1px; background:var(--outline-var)}
+.sig-slots{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(168px,1fr))}
+.sig-slot{
+  border:1px solid var(--outline-var); border-radius:var(--r-s); padding:8px 10px 10px;
+  background:var(--surface-1); text-align:center; cursor:pointer; transition:.15s;
+}
+.sig-slot:hover{border-color:var(--primary); background:var(--surface-2)}
+.sig-slot .role{font-size:11px; color:var(--on-surface-var); margin-bottom:2px}
+.sig-slot .role b{display:block; font-family:var(--thaana); direction:rtl; font-size:12.5px; font-weight:500; color:var(--on-surface)}
+.sig-slot .box{
+  height:52px; display:grid; place-items:center; border-radius:var(--r-xs);
+  background:#fff; border:1px dashed var(--outline-var); margin-top:6px; overflow:hidden;
+}
+.sig-slot .box img{max-height:46px; max-width:96%; object-fit:contain}
+.sig-slot .box span{font-size:12px; color:var(--outline)}
+.sig-slot.set .box{border-style:solid}
+
+/* ============================== signature library ============================== */
+.sig-grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.sig-card{border:1px solid var(--outline-var); border-radius:var(--r-m); overflow:hidden; background:var(--surface)}
+.sig-card .prev{height:92px; background:#fff; display:grid; place-items:center; padding:8px; border-bottom:1px solid var(--outline-var)}
+.sig-card .prev img{max-height:76px; max-width:96%; object-fit:contain}
+.sig-card .meta{display:flex; align-items:center; gap:4px; padding:6px 6px 6px 12px}
+.sig-card .meta input{
+  flex:1; min-width:0; border:none; background:transparent; font:inherit; font-size:13px;
+  padding:6px 2px; border-bottom:1px solid transparent; color:var(--on-surface);
+}
+.sig-card .meta input:hover{border-bottom-color:var(--outline-var)}
+.sig-card .meta input:focus{outline:none; border-bottom-color:var(--primary)}
+.empty{
+  border:1px dashed var(--outline-var); border-radius:var(--r-m); padding:36px 20px;
+  text-align:center; color:var(--on-surface-var); background:var(--surface);
+}
+.empty h3{margin:0 0 6px; font-size:15px; font-weight:500; color:var(--on-surface)}
+.empty p{margin:0 0 16px; font-size:13px}
+.role-row{
+  display:flex; align-items:center; gap:12px; padding:10px 0;
+  border-bottom:1px solid var(--outline-var); flex-wrap:wrap;
+}
+.role-row:last-child{border-bottom:none}
+.role-row .rname{flex:1; min-width:150px}
+.role-row .rname .dv{font-size:14px}
+.role-row .rname small{color:var(--on-surface-var); font-size:11.5px}
+.role-row .rprev{
+  width:120px; height:44px; border:1px solid var(--outline-var); border-radius:var(--r-xs);
+  background:#fff; display:grid; place-items:center; overflow:hidden; flex:none;
+}
+.role-row .rprev img{max-height:38px; max-width:94%; object-fit:contain}
+.role-row .rprev span{font-size:11px; color:var(--outline)}
+.rprev{width:120px; height:44px; border:1px solid var(--outline-var); border-radius:var(--r-xs);
+  background:#fff; display:grid; place-items:center; overflow:hidden; flex:none}
+.rprev img{max-height:38px; max-width:94%; object-fit:contain}
+.rprev span{font-size:11px; color:var(--outline)}
+.rprev.big{width:168px; height:66px}
+.rprev.big img{max-height:58px}
+.staff-sig{display:flex; gap:16px; align-items:center; flex-wrap:wrap}
+.staff-sig-txt{flex:1; min-width:200px; font-size:12.5px; color:var(--on-surface-var); line-height:1.7}
+.staff-sig-txt b{font-weight:500; color:var(--on-surface)}
+.staff-sig-btns{display:flex; gap:8px; flex-wrap:wrap}
+
+/* ============================== dialog ============================== */
+.scrim{
+  position:fixed; inset:0; background:rgba(0,0,0,.42); z-index:60;
+  display:grid; place-items:center; padding:16px; overscroll-behavior:contain;
+}
+.scrim[hidden]{display:none}
+.dialog{
+  background:var(--surface-2); border-radius:var(--r-xl); box-shadow:var(--e3);
+  width:min(560px,100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden;
+}
+.dialog h3{margin:0; padding:22px 24px 6px; font-size:20px; font-weight:400}
+.dialog .dsub{margin:0; padding:0 24px 12px; font-size:13.5px; color:var(--on-surface-var)}
+.dialog .dbody{padding:8px 24px; overflow:auto}
+.dialog .dact{display:flex; justify-content:flex-end; gap:8px; padding:16px 20px 20px; flex-wrap:wrap}
+.pad-wrap{background:#fff; border:1px solid var(--outline); border-radius:var(--r-m); overflow:hidden; position:relative}
+.pad-wrap canvas{display:block; width:100%; height:200px; touch-action:none; cursor:crosshair}
+.pad-wrap .base{
+  position:absolute; inset-inline:24px; bottom:46px; border-bottom:1px dashed var(--outline-var); pointer-events:none;
+}
+.pick-grid{display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.pick{
+  border:1px solid var(--outline-var); border-radius:var(--r-s); background:#fff;
+  padding:6px; cursor:pointer; text-align:center; transition:.13s;
+}
+.pick:hover{border-color:var(--primary); box-shadow:var(--e1)}
+.pick.sel{border-color:var(--primary); box-shadow:inset 0 0 0 1px var(--primary)}
+.pick .ph{height:58px; display:grid; place-items:center; overflow:hidden}
+.pick .ph img{max-height:54px; max-width:96%; object-fit:contain}
+.pick .nm{font-size:11.5px; color:var(--on-surface-var); padding-top:4px; border-top:1px solid var(--surface-3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.pick.none .ph{color:var(--outline); font-size:12px}
+
+/* ============================== fab & snackbar ============================== */
+.fab{
+  position:fixed; inset-inline-end:22px; bottom:22px; z-index:45;
+  height:56px; padding:0 20px; border:none; border-radius:var(--r-l); cursor:pointer;
+  background:var(--primary-container); color:var(--on-primary-container);
+  box-shadow:var(--e2); display:inline-flex; align-items:center; gap:10px;
+  font-size:14px; font-weight:600;
+}
+.fab:hover{box-shadow:var(--e3)}
+.fab svg{width:22px;height:22px}
+.fab[hidden]{display:none}
+.snackbar{
+  position:fixed; inset-inline-start:50%; transform:translate(-50%,120%); bottom:24px; z-index:70;
+  background:#2e3131; color:#eff1f1; padding:14px 18px; border-radius:var(--r-xs);
+  box-shadow:var(--e3); font-size:14px; transition:transform .22s ease; max-width:min(520px,92vw);
+}
+.snackbar.show{transform:translate(-50%,0)}
+
+/* ============================== sheet toolbar ============================== */
+.sheet-bar{
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  background:var(--surface); border-radius:var(--r-m); padding:12px 14px; margin-bottom:16px; box-shadow:var(--e1);
+}
+.sheet-bar .spacer{flex:1}
+.preview-scroll{overflow:auto; padding-bottom:8px}
+.preview-stage{transform-origin:top left}
+
+/* ============================== THE SHEET ============================== */
+.paper{
+  width:297mm; min-height:210mm; background:#fff; color:#000; padding:5mm 9mm 4mm 8mm;
+  margin:0 auto 14px; box-shadow:0 2px 10px rgba(0,0,0,.22);
+  display:flex; flex-direction:column; font-family:var(--thaana);
+}
+.sheet-head{text-align:center; flex:none}
+.sheet-head .bismillah{
+  font-family:'Amiri','Traditional Arabic','Arabic Typesetting','Scheherazade New','Noto Naskh Arabic','Segoe UI',serif;
+  font-size:20pt; direction:rtl; line-height:1.1; margin-bottom:1mm;
+}
+.sheet-head .emblem{width:10mm; height:11mm; object-fit:contain; display:block; margin:0 auto 1mm}
+.sheet-head .office{font-size:14pt; direction:rtl; line-height:1.5}
+.sheet-head .island{font-size:10.5pt; direction:rtl; line-height:1.6}
+.sheet-head .title{font-size:12.5pt; direction:rtl; text-decoration:underline; text-underline-offset:3px; margin-top:1.4mm; line-height:1.7}
+.sheet-head .period{font-size:11.5pt; direction:rtl; text-decoration:underline; text-underline-offset:3px; line-height:1.7}
+.sheet-info{
+  direction:rtl; display:flex; justify-content:space-between; gap:4mm;
+  font-size:10pt; margin:2.6mm 2mm 2.2mm; line-height:1.9; flex:none; flex-wrap:wrap;
+}
+.sheet-info span{white-space:nowrap}
+table.ot{width:100%; border-collapse:collapse; table-layout:fixed; direction:ltr; flex:none}
+table.ot th, table.ot td{direction:rtl; border:.8pt solid #000; padding:0.6mm 0.8mm; text-align:center; vertical-align:middle; overflow:hidden}
+table.ot th{font-size:8.6pt; font-weight:400; line-height:1.55}
+table.ot thead tr:last-child th{border-bottom:2.6pt double #000}
+table.ot td{font-size:9.2pt; height:var(--rowh,13mm); line-height:1.6}
+table.ot td.desc{overflow:visible; text-align:right; padding:1mm 1.6mm; vertical-align:top; font-size:9.4pt; white-space:pre-wrap; word-break:break-word}
+table.ot td.num{direction:ltr; font-family:var(--latin); font-size:9.5pt; font-variant-numeric:tabular-nums}
+table.ot td.sig{padding:0.4mm}
+table.ot td.sig img{max-height:calc(var(--rowh,13mm) - 2.4mm); max-width:100%; object-fit:contain; display:block; margin:0 auto}
+.pagemark{margin-top:auto; padding-top:2mm; text-align:center; font-size:8.5pt; direction:rtl; color:#000}
+
+@media (max-width:560px){
+  .hide-xs{display:none}
+  .appbar-row{padding:8px 10px; gap:8px}
+  main{padding:16px 10px 120px}
+  .card{padding:16px}
+  .entry-head{padding:8px 4px 8px 10px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; scroll-behavior:auto !important}
+}
+
+/* ============================== app switcher ============================== */
+.appswitch{display:flex; gap:6px; margin-inline-start:12px; flex-wrap:wrap}
+.appswitch a{font:500 12.5px/1 var(--latin); padding:8px 14px; border-radius:16px; text-decoration:none;
+            color:var(--on-surface-var); border:1px solid var(--outline-var); white-space:nowrap}
+.appswitch a:hover{background:var(--surface-3)}
+.appswitch a.active{background:var(--primary); color:var(--on-primary); border-color:transparent}
+@media (max-width:820px){ .appswitch{order:3; width:100%} }
+
+/* ============================== print ============================== */
+@media print{
+  @page{size:A4 landscape; margin:5mm 9mm 4mm 8mm}
+  html,body{background:#fff !important}
+  .appbar,.tabs,.sheet-bar,.fab,.snackbar,.scrim,.noprint{display:none !important}
+  main{max-width:none; margin:0; padding:0}
+  .panel[hidden]{display:none !important}
+  .preview-scroll{overflow:visible !important; padding:0 !important}
+  .preview-stage{transform:none !important; width:auto !important; height:auto !important}
+  #previewFit{width:auto !important; height:auto !important}
+  .paper{
+    width:auto; min-height:0; padding:0; margin:0; box-shadow:none;
+    break-after:page; page-break-after:always;
+  }
+  .paper:last-child{break-after:auto; page-break-after:auto}
+  table.ot thead{display:table-header-group}
+  table.ot tr{break-inside:avoid; page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-row">
+    <div class="brand">
+      <div class="mark"><img id="brandMark" alt=""></div>
+      <div>
+        <h1>Overtime Sheet</h1>
+        <p class="dv">އިތުރުގަޑީގެ ޙާޟިރީ</p>
+      </div>
+    </div>
+    <nav class="appswitch">
+      <a href="index.html">Home</a>
+      <a href="attendance.html">Attendance sheet</a>
+      <a href="overtime.html" class="active">Overtime sheet</a>
+    </nav>
+    <div class="appbar-actions">
+      <button class="btn small outlined" id="btnOpen" title="Open a saved sheet file">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>
+        <span class="hide-xs">Open</span>
+      </button>
+      <button class="btn small tonal" id="btnSave" title="Save this sheet to a file">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/></svg>
+        <span class="hide-xs">Save</span>
+      </button>
+      <button class="btn small filled" id="btnPrint">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3zm-3 11H8v-5h8v5zm3-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm-1-9H6v4h12V3z"/></svg>
+        Print
+      </button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" data-tab="details" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4 0-9 2-9 5v3h18v-3c0-3-5-5-9-5z"/></svg>
+      Details</button>
+    <button class="tab" role="tab" data-tab="entries" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.6 4 2.3-.9 1.6L11 13V6h2v6.6z"/></svg>
+      Entries <span class="count" id="cntEntries">0</span></button>
+    <button class="tab" role="tab" data-tab="sheet" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5L14 3.5zM8 12h8v1.6H8V12zm0 3.4h8V17H8v-1.6z"/></svg>
+      Sheet</button>
+  </div>
+</nav>
+
+<main>
+  <!-- ==================== DETAILS ==================== -->
+  <section class="panel" id="panel-details">
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10z"/></svg>Period</h2>
+      <p class="sub">The date range this sheet covers. The Dhivehi line on the sheet is written for you.</p>
+      <div class="grid two">
+        <div class="tf"><label for="mFrom">From <span class="dvlab">އިން</span></label><input type="date" id="mFrom" lang="en-GB"></div>
+        <div class="tf"><label for="mTo">To <span class="dvlab">އަށް</span></label><input type="date" id="mTo" lang="en-GB"></div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="tf rtl"><label for="mPeriod">Line printed on the sheet</label><input type="text" id="mPeriod"><div class="hint" id="periodHint"></div></div>
+      </div>
+      <label class="sw" style="margin-top:10px">
+        <input type="checkbox" id="mPeriodAuto"><span class="track"></span>
+        <span class="lbl">Write this line automatically<small>Turn off to type your own wording</small></span>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4 0-9 2-9 5v3h18v-3c0-3-5-5-9-5z"/></svg>Employee</h2>
+      <p class="sub">Printed across the top of the sheet, right to left.</p>
+      <div class="grid two">
+        <div class="tf rtl"><label for="mName">Name <span class="dvlab">މުވައްޒަފުގެ ނަން</span></label><input type="text" id="mName"></div>
+        <div class="tf rtl"><label for="mAddress">Address <span class="dvlab">އެޑްރެސް</span></label><input type="text" id="mAddress"></div>
+        <div class="tf rtl"><label for="mPosition">Position <span class="dvlab">މަޤާމް</span></label><input type="text" id="mPosition"></div>
+        <div class="tf"><label for="mRecord">Record card no. <span class="dvlab">ރެކޯޑް ކާޑު ނަންބަރު</span></label><input type="text" id="mRecord" inputmode="numeric"></div>
+        <div class="tf"><label for="mSalary">Salary <span class="dvlab">މުސާރަ</span></label><input type="text" id="mSalary"><div class="hint">ރ is added when printing</div></div>
+      </div>
+      <div class="subhead">Staff signature <span class="dv" style="font-family:var(--thaana)">ސޮއި</span></div>
+      <div class="staff-sig">
+        <div class="rprev big" id="staffSigPrev"><span>Not set</span></div>
+        <div class="staff-sig-txt">
+          Used automatically on every entry for
+          <b class="dv">ހުއްދައަށް އެދިލެއްވި</b>, <b class="dv">މަސައްކަތް ފެށި</b> and <b class="dv">މަސައްކަތް ނިއްމި</b>
+          — the columns the staff member signs.
+        </div>
+        <div class="staff-sig-btns">
+          <button class="btn small filled" id="staffSigDraw">Draw</button>
+          <button class="btn small outlined" id="staffSigUpload">Upload</button>
+          <button class="btn small" id="staffSigChoose">Choose saved</button>
+          <button class="btn small danger" id="staffSigClear">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18c4-1 5-3 6-6s2-6 4-6 3 2 2 5-3 5-6 6-4 1-6 1zm0 3h18v2H3z"/></svg>Saved signatures <span class="count" id="cntSigs">0</span></h2>
+      <p class="sub">Draw or upload once, then drop the same signature into any cell.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="btn filled small" id="btnDrawNew">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          Draw signature</button>
+        <button class="btn outlined small" id="btnUploadNew">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zM12 2 5.5 9H10v6h4V9h4.5L12 2z"/></svg>
+          Upload image</button>
+      </div>
+      <div id="sigLibrary"></div>
+    </div>
+
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>Column defaults</h2>
+      <p class="sub">The three staff columns follow the staff signature above. Set the other two here.</p>
+      <div id="roleDefaults"></div>
+    </div>
+
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v3H4V4zm0 5h16v11H4V9zm2 2v7h5v-7H6z"/></svg>Sheet heading</h2>
+      <p class="sub">Office name, island and title. Change these if you move to another office.</p>
+      <div class="grid two">
+        <div class="tf rtl span2"><label for="mOffice">Office <span class="dvlab">އިދާރާ</span></label><input type="text" id="mOffice"></div>
+        <div class="tf rtl"><label for="mIsland">Island / country</label><input type="text" id="mIsland"></div>
+        <div class="tf rtl"><label for="mTitle">Sheet title</label><input type="text" id="mTitle"></div>
+        <div class="tf rtl"><label for="mBismillah">Bismillah line</label><input type="text" id="mBismillah"></div>
+      </div>
+      <label class="sw" style="margin-top:10px">
+        <input type="checkbox" id="mShowBismillah"><span class="track"></span>
+        <span class="lbl">Print the Bismillah above the emblem<small>Uses the ﷽ ligature, so no special font is needed</small></span>
+      </label>
+      <div class="subhead">Emblem</div>
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap">
+        <div style="width:64px;height:70px;border:1px solid var(--outline-var);border-radius:var(--r-s);display:grid;place-items:center;background:#fff">
+          <img id="logoPrev" alt="" style="max-width:52px;max-height:58px;object-fit:contain">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn outlined small" id="btnLogo">Replace image</button>
+          <button class="btn small danger" id="btnLogoReset">Use default</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h12v2H3v-2z"/></svg>Sheet layout</h2>
+      <p class="sub">How the printed pages are built.</p>
+      <div class="grid two">
+        <div class="tf"><label for="mRows">Rows per page</label>
+          <select id="mRows">
+            <option>6</option><option>7</option><option>8</option><option>9</option>
+            <option>10</option><option>11</option><option>12</option><option>14</option>
+          </select></div>
+        <div class="tf"><label for="mDateFmt">Date shown as</label>
+          <select id="mDateFmt">
+            <option value="dmy">16/04/2026</option>
+            <option value="dmy2">16-04-2026</option>
+            <option value="dvfull">16 އޭޕްރިލް 2026</option>
+          </select></div>
+        <div class="tf"><label for="mTimeFmt">Time shown as</label>
+          <select id="mTimeFmt">
+            <option value="24">16:30 (24-hour)</option>
+            <option value="12">4:30 PM (12-hour)</option>
+          </select></div>
+        <div class="tf"><label for="mTimeCells">Start &amp; end time cells</label>
+          <select id="mTimeCells">
+            <option value="split">Split, as in the form</option>
+            <option value="merged">One wide cell</option>
+          </select></div>
+      </div>
+      <label class="sw" style="margin-top:12px">
+        <input type="checkbox" id="mSort"><span class="track"></span>
+        <span class="lbl">Keep entries in date order<small>Sorts the list and the sheet by date</small></span>
+      </label>
+      <div class="subhead">Start over</div>
+      <button class="btn outlined small danger" id="btnReset">Clear everything and start a new sheet</button>
+    </div>
+  </section>
+
+  <!-- ==================== ENTRIES ==================== -->
+  <section class="panel" id="panel-entries" hidden>
+    <div class="card flat" id="summaryCard" style="padding:14px 18px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <span class="chip tot" id="sumOfficial">0:00</span>
+        <span style="font-size:12.5px;color:var(--on-surface-var)">official days <span class="dv">ރަސްމީ</span></span>
+        <span class="chip hol" id="sumHoliday">0:00</span>
+        <span style="font-size:12.5px;color:var(--on-surface-var)">days off <span class="dv">ބަންދު</span></span>
+        <span style="flex:1"></span>
+        <span style="font-size:12.5px;color:var(--on-surface-var)" id="sumCount">0 entries</span>
+      </div>
+    </div>
+    <div id="entryList"></div>
+  </section>
+
+  <!-- ==================== SHEET ==================== -->
+  <section class="panel" id="panel-sheet" hidden>
+    <div class="sheet-bar noprint">
+      <button class="btn icon small outlined" id="zoomOut" title="Zoom out">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 11h14v2H5z"/></svg></button>
+      <span id="zoomLabel" style="font-size:13px;min-width:56px;text-align:center;font-variant-numeric:tabular-nums">Fit</span>
+      <button class="btn icon small outlined" id="zoomIn" title="Zoom in">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></button>
+      <button class="btn small" id="zoomFit">Fit width</button>
+      <span class="spacer"></span>
+      <span id="pageInfo" style="font-size:12.5px;color:var(--on-surface-var)"></span>
+      <button class="btn filled small" id="btnPrint2">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3zm-3 11H8v-5h8v5zm3-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm-1-9H6v4h12V3z"/></svg>
+        Print / save as PDF</button>
+    </div>
+    <div class="preview-scroll" id="previewScroll">
+      <div id="previewFit"><div class="preview-stage" id="previewStage"></div></div>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fabAdd" hidden>
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+  Add entry
+</button>
+
+<!-- ==================== signature picker ==================== -->
+<div class="scrim" id="pickScrim" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+    <h3 id="pickTitle">Choose a signature</h3>
+    <p class="dsub" id="pickSub"></p>
+    <div class="dbody"><div class="pick-grid" id="pickGrid"></div></div>
+    <div class="dact">
+      <button class="btn" id="pickDraw">Draw new</button>
+      <button class="btn" id="pickUpload">Upload</button>
+      <span style="flex:1"></span>
+      <button class="btn" id="pickCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== signature pad ==================== -->
+<div class="scrim" id="padScrim" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="padTitle">
+    <h3 id="padTitle">Draw signature</h3>
+    <p class="dsub">Sign with a finger, stylus or mouse. Empty space is trimmed off.</p>
+    <div class="dbody">
+      <div class="tf" style="margin-bottom:14px"><label for="padName">Label</label><input type="text" id="padName" placeholder="e.g. Ahmed Zinan"></div>
+      <div class="pad-wrap"><canvas id="padCanvas"></canvas><div class="base"></div></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn small outlined" id="padUndo">Undo stroke</button>
+        <button class="btn small outlined" id="padClear">Clear</button>
+        <span style="flex:1"></span>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px">Thickness
+          <input type="range" id="padWidth" min="1.4" max="5" step="0.2" value="2.6" style="width:96px">
+        </label>
+      </div>
+    </div>
+    <div class="dact">
+      <button class="btn" id="padCancel">Cancel</button>
+      <button class="btn filled" id="padSave">Save signature</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== confirm ==================== -->
+<div class="scrim" id="confirmScrim" hidden>
+  <div class="dialog" style="width:min(400px,100%)" role="dialog" aria-modal="true">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p class="dsub" id="confirmMsg"></p>
+    <div class="dact">
+      <button class="btn" id="confirmNo">Cancel</button>
+      <button class="btn filled" id="confirmYes">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="snackbar" id="snackbar" role="status" aria-live="polite"></div>
+
+<input type="file" id="fileJson" accept=".json,application/json" hidden>
+<input type="file" id="fileImg" accept="image/*" hidden>
+<input type="file" id="fileLogo" accept="image/*" hidden>
+
+<script>
+const LOGO_DEFAULT = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMoAAADcCAYAAAAx6j4uAAAKQklEQVR42u2d2Y7jOAxFO0L+/5czTzUIgjjWwp2HwDxMVZctSzy6pNbH6/X6h8nb4/H4v2Jfr9eDGsltgyrQhQQDFGwBHOABFAylARQMwwAFVcHm2o1RLx8gtEfCZoBkNG7enlRBX7V6PB4vYCH0cjVrB9wN6QgFAaVFrnI69IyiAEp5WE4BARJAKQ/L7t8ByGY7MeoVA4QV592BBDhQFMADEnVjeLiwAQiK0lIpVtQESABF3WElV/tKOSyQEHqF7c2//dzDCYEkgI90HvWSUI1ZxzwZ/QIUQq/UkEg+BzUBlDZ5DZAASjnTcCyvBYar38JCSHKUMA5+mmvsvs8y7wIUoEkJSwbVBRTAMevxgQVQWoVngAIoAAMspYzhYZyGzgFFwYHoJFCUEI5DWNLDWBQp2NNGVpgdoAm5CL3ahGMSisf5XyjKNghRHUejXISXKEqpcAOHRlEABEBcjVEvIMFQlHpgAAk5CpAcwsIFq4ACJCgSoAAJwAAKkAAMoAAJwPQw5lE2EuW731XoXIAFRTnqVe+cqBI0wNIYlM+VvpWOLQIaQEkTSlTPiboCw6JIAAEWQOkLiPZgQzdYWBTZQEXetyxLbV/uNuyOohR2lBkgTr+ji7IASvGeVPr+lq6gEHoVDzc0ru9u2fYoSp+YXPMu++qgoSiNEtfVi4lQGUBpBwlKQegFJMZJeJTbklGUxk6Y8fs6qA6KIqwkmZbfE1YBiikkma+gAxZCLzdIvB0f55c3djgGhuTz+Zp32QMXitJCSQipACWcA2bZBKY5Ew8oqMmx42V1OmABFLNQRtLZJJSL5B5QgJWcBVBIjH1CI8IvQNlyikg9MaoAKCFVZNUxMyxZsdgeDCjN1KSqeqBMgEK+gwGKlZpoObPUcC/AAgo9Pt8KKN0dhyQZUNpDorEUxgI2VAVQpp3DyllwSkAh3BJ+z5VyaJQXgO/tCSByz8ucgwALioJhgIJhgJLIfoVd38IaQh1AwTBAwdaTYcsRLAxQMMzNTIeH33tW1lSdPa/jQdmePjQ8PpCQDMvmU8PiY7pAsgMFy+Zz+Bc5CqqFeYPSMdyyUpW//e9AYuNro+qHRYBlxYlx+Ng+MywcpjMsmA0k2vX9tHYYdvlhGTsi92QecLAMPjKq9wQYalJCUVAVLINvjCg9ArBgMz7hFZEw4YhhkUFBVbAsavLvn/PhEtkPZJCMtxnkiJfAhw69KoJzt3CPrcLxfeDxer1CVkx2R9nZ1fj5Nx1hieoLIRSlmkOw9beebzwjO1s2x+q667BD2B0mR8k8CnaVg8xeA8doX/xOJlQyn7H3vWrgavc/dveFkdERK/WChGY5OolwoGQJwSRDBYaC49dHSEWJ7jgk7f3aPs1xRVFUBUh6+sSwrJDT69u8YQGSOHW541OhQTn5kEhOqA1Jd+Ai3WtpDsq3D8gYgqEk8UOutMcV/Sp4phDM8l2W8HlNdEqFXNZtNTI4V7Te26o8Wg0fabhdui61vm14NUKGEKz6qmbrb7Fqcw3fGFEaLVoIFnk4WiLUigCJVMhlYaOic2UOuTQ6hI77XKR9cXgXLKKqVB7l8vgOLzWR9I0Rgd7sE5FRVSXCEn7vkEvq+4c3JNF6xWyrlbOpYhRFW7WnZkXMFlCi8jLuiLR0iqwOunJSz47vmSiKxFH8GZamZwEw+l59zbbWvmJkSDeK5zBklRXKFSDxWtHwKy87KdPwrKjTRvQarvXqfa/KkgFwi7ZWnVfbOddrZ5RKcyxf4tnWPfJMsn33Xd63UGm2x+qzT0dOxRVld5iyquyvlmslNHhv0KyQRHzfzt88PT5EuhEjnmF8Mkm2cppk9MEHi7YOtx9FarivsqpITPKdJKOekFjVudR0gkqOkgGSE/WSOCu4Yg8eKXLw9MlRqQHZTls35PL+3qcFud7hgNb7PcLIiJ2Bp7Ke5qez/lHuarqKiyYjK2WX8wSGdkN5VFqFXYhXgwLRoc/W3iFylOjHDWXpoa9Aok7tfG1oFcQbkmwh2M71dZ7fEzHk0vTRkcn5q4ZgJ8tnosBf3TeGxguyJZ/ZzToUi1yHWv45vEklBJOrW45w0ivPqABDtfKelNlaXbr4wuhaaVVVRfP7MtWZtC8OqYJEh2Q3BIu6nmvmnkjJsmecWJT00RGJWsKEfWisQ7Fubb+1wzGzXfWMnhuhpHcESu/W5NqLgmu9tEKwCiojtRuw4yrtdqBEb2jpW7w+oTkNxbpuZWgJimQ4UyWXqfjNkvbs+uFR9tlbl+FkWUznjXGtFYUeFkgABcMApaaq/IWDnifIoCaAEjqvWD3gLnuuBCgNVIW6ARQcwrEHJuQCFEKwZJBggCIaZkg5WrQbsVATQAnVK3c5dR5QUJV0sES9MgJQgCWN+gEJoJg54i4w2nteCLcO6q/bxi1LhYjSO1teYw4owJIOGO17DQm9sHCwSb0TIFAUU6fbuY1W21ln5kXY2ouiqNkvR9qdpJSe1d+dPAQSFMVMVTxDrBXAURMUxUVVpI8ZApK49qQK1pxvdsLOQ11WHB9IUBT3kOzPES2dMds13+Qo5CtbYGmpByEXoVfoEOwkd9AMlYAEUNxVZscJP09xlHRqQi5ylBCqEtkxCbkAJWVyf3d3vPad8kBCMh++57a+nwQ1AZQwCqHVa/+97+RZq2ACEaCoQqLhYN8GBT5/tjpwMAMOsPw2Rr3+XY82SY06SarD3/+vwPK+WmDn3kcgIplXW691l9T/+hstBcDhUZQtB5ZcZjKrHqf3smg7++wgQTfoCL028oVTR1m5zEcrD0JlCL2mHPX0jvb330vE9VaTle8AXk2aRlnoCSgBleNbrjIL0/u/fX/W7JJ7z/3td7sjOeaoISgryfJOry95dvFseLYL4RXk0RQQUAKGY5Kxv0Y4uPMu6dGxrupSNpnfHfbd7eGv5jvuynOSy1ytPL565q9/I6WyVXOY0QmS00b86/Xf//vmgJ/v+fxZtFNRdkLKqzqtqjgllrCs9Grfhl2lZtCjrPWSDtnev22mfBVVphwonj3yao7xa9PWL2edBXMmTLt7z24nUG2uJi0o2j2vVO/8ayb+LmyZDWtmZ/sj1FVWaEZmSDSeMTtvkDEWPymz1HxK1hwmnaJIrW791cNp3W04E17N/k6jLL+eeaIIFVYkp1MUiwq+eofEqFmUepgZQs7chtKWch7lTgVOJu6khpJ3k3pL59WaWNRaoY2iCDd65MR2NdSLFLasrHrOnLiXBmWnYaLDkg2S7OFVudCrUwNR/yiKSrw/+++8l49n28q7WmfVlrKMjpBk7H0j9dQdYSm/FbjL6lZriLvV66Dx45cpa7lLdbhVDsDLPvtb4brrymeCPSsCgsVrn+zAlMpRyD9i1X+lTow984EhB3xyFKxgjlLZUBQMAxQMAxQMAxQMAxRsKpG/+x0GKEACLICCYYCCiaoJqhKkrZhwjA3IN2MSElCAA2gIvYAk17MxQMEwQMEwcpTm4Rg5CYrSyrIdV9Td/gMwKAvVsQ5X+wAAAABJRU5ErkJggg==";
+</script>
+<script>
+/* ===================================================================
+   Overtime Sheet — އިތުރުގަޑީގެ ޙާޟިރީ
+   Single-file data entry app for the council OT attendance form.
+   =================================================================== */
+(function () {
+'use strict';
+
+/* ------------------------------ constants ------------------------------ */
+const DV_MONTHS = ['ޖެނުއަރީ','ފެބްރުއަރީ','މާރިޗު','އޭޕްރިލް','މެއި','ޖޫން',
+                   'ޖުލައި','އޯގަސްޓް','ސެޕްޓެމްބަރ','އޮކްޓޯބަރ','ނޮވެމްބަރ','ޑިސެމްބަރ'];
+const DV_DAYS = ['އާދީއްތަ','ހޯމަ','އަންގާރަ','ބުދަ','ބުރާސްފަތި','ހުކުރު','ހޮނިހިރު'];
+
+const ROLES = [
+  { key:'sigReq',   dv:'ހުއްދައަށް އެދިލެއްވި ސޮއި', en:'Requested by' },
+  { key:'sigApp',   dv:'ހުއްދަ ދެއްވި ސޮއި',        en:'Approved by' },
+  { key:'sigStart', dv:'މަސައްކަތް ފެށި ސޮއި',      en:'Work started' },
+  { key:'sigEnd',   dv:'މަސައްކަތް ނިއްމި ސޮއި',    en:'Work ended' },
+  { key:'sigChk',   dv:'ޗެކުކުރި ސޮއި',             en:'Checked by' }
+];
+
+/* the three columns the staff member signs themselves */
+const STAFF_ROLES = ['sigReq', 'sigStart', 'sigEnd'];
+
+const STORE_KEY = 'ot-sheet:v1';
+const PAPER_PX = 297 * 96 / 25.4;   /* A4 landscape width in CSS px */
+
+/* ------------------------------ helpers ------------------------------ */
+const qs  = (s, r) => (r || document).querySelector(s);
+const qsa = (s, r) => Array.from((r || document).querySelectorAll(s));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const pad2 = n => String(n).padStart(2, '0');
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+function parseDate(s) {
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return isNaN(d) ? null : d;
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+function toMinutes(t) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t || '');
+  return m ? (+m[1]) * 60 + (+m[2]) : null;
+}
+function fmtTime(t) {
+  const mins = toMinutes(t);
+  if (mins == null) return '';
+  const h = Math.floor(mins / 60), mi = mins % 60;
+  if (S.meta.timeFmt === '12') {
+    const ap = h < 12 ? 'AM' : 'PM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return h12 + ':' + pad2(mi) + ' ' + ap;
+  }
+  return pad2(h) + ':' + pad2(mi);
+}
+function fmtDate(iso) {
+  const d = parseDate(iso);
+  if (!d) return '';
+  const D = pad2(d.getDate()), M = pad2(d.getMonth() + 1), Y = d.getFullYear();
+  if (S.meta.dateFmt === 'dmy2')  return D + '-' + M + '-' + Y;
+  if (S.meta.dateFmt === 'dvfull') return d.getDate() + ' ' + DV_MONTHS[d.getMonth()] + ' ' + Y;
+  return D + '/' + M + '/' + Y;
+}
+function fmtHM(mins) {
+  if (!mins) return '0:00';
+  return Math.floor(mins / 60) + ':' + pad2(mins % 60);
+}
+function periodText(from, to) {
+  const a = parseDate(from), b = parseDate(to);
+  if (!a || !b) return '';
+  const head = a.getFullYear() + ' ' + DV_MONTHS[a.getMonth()] + ' ' + a.getDate();
+  const tail = (a.getFullYear() === b.getFullYear() ? '' : b.getFullYear() + ' ')
+             + DV_MONTHS[b.getMonth()] + ' ' + b.getDate();
+  return head + ' އިން ' + tail + ' އަށް';
+}
+
+/* ------------------------------ state ------------------------------ */
+function blankEntry(over) {
+  const e = {
+    id: uid(), date: '', dayText: '', dayAuto: true, dayType: 'auto',
+    reqTime: '', startTime: '', endTime: '', desc: '',
+    totalAuto: true, totH: 0, totM: 0,
+    sigReq: null, sigApp: null, sigStart: null, sigEnd: null, sigChk: null
+  };
+  ROLES.forEach(r => { e[r.key] = S.defaults[r.key] || null; });
+  return Object.assign(e, over || {});
+}
+
+function freshState() {
+  return {
+    meta: {
+      logo: LOGO_DEFAULT,
+      bismillah: '\uFDFD', showBismillah: true,
+      bismillah: '﷽',
+      office: 'މިލަދުންމަޑުލު އުތުރުބުރީ މާއުނގޫދޫ ކައުންސިލް އިދާރާ',
+      island: 'ށ.މާއުނގޫދޫ / ދިވެހިރާއްޖެ',
+      title: 'އިތުރުގަޑީގެ ޙާޟިރީ',
+      from: '', to: '', period: '', periodAuto: true,
+      name: '', address: '', position: '', record: '', salary: '', staffSig: null,
+      rowsPerPage: 6, dateFmt: 'dmy', timeFmt: '24', sortByDate: true
+    },
+    signatures: [],
+    defaults: { sigReq: null, sigApp: null, sigStart: null, sigEnd: null, sigChk: null },
+    entries: []
+  };
+}
+
+let S = freshState();
+const openCards = new Set();
+let activeTab = 'details';
+
+/* ------------------------------ derived ------------------------------ */
+function dowOf(e) { const d = parseDate(e.date); return d ? d.getDay() : null; }
+
+function isHoliday(e) {
+  if (e.dayType === 'holiday') return true;
+  if (e.dayType === 'official') return false;
+  const w = dowOf(e);
+  return w === 5 || w === 6;              /* Friday & Saturday */
+}
+function dayName(e) {
+  if (!e.dayAuto) return e.dayText || '';
+  const w = dowOf(e);
+  return w == null ? '' : DV_DAYS[w];
+}
+function entryMinutes(e) {
+  if (!e.totalAuto) return Math.max(0, (+e.totH || 0) * 60 + (+e.totM || 0));
+  const a = toMinutes(e.startTime), b = toMinutes(e.endTime);
+  if (a == null || b == null) return 0;
+  let d = b - a;
+  if (d <= 0) d += 1440;                  /* ran past midnight */
+  return d;
+}
+function overnight(e) {
+  if (!e.totalAuto) return false;
+  const a = toMinutes(e.startTime), b = toMinutes(e.endTime);
+  return a != null && b != null && b - a <= 0;
+}
+function outOfPeriod(e) {
+  const d = parseDate(e.date), a = parseDate(S.meta.from), b = parseDate(S.meta.to);
+  if (!d || !a || !b) return false;
+  return d < a || d > b;
+}
+function sortedEntries() {
+  const list = S.entries.slice();
+  if (S.meta.sortByDate) {
+    list.sort((x, y) => (x.date || '9999').localeCompare(y.date || '9999'));
+  }
+  return list;
+}
+function sigById(id) { return S.signatures.find(s => s.id === id) || null; }
+
+/* Setting the staff signature fills the three staff columns: on new entries via
+   the defaults, and on existing ones wherever the slot is empty or still holds
+   the signature this replaces. Anything signed by hand is left alone. */
+function setStaffSignature(id) {
+  const old = S.meta.staffSig;
+  S.meta.staffSig = id || null;
+  STAFF_ROLES.forEach(k => { S.defaults[k] = S.meta.staffSig; });
+  let n = 0;
+  S.entries.forEach(e => {
+    let touched = false;
+    STAFF_ROLES.forEach(k => {
+      if (!e[k] || (old && e[k] === old)) { e[k] = S.meta.staffSig; touched = true; }
+    });
+    if (touched) n++;
+  });
+  return n;
+}
+
+/* ------------------------------ persistence ------------------------------ */
+let saveTimer = null;
+function autosave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      if (window.storage && typeof window.storage.set === 'function') {
+        Promise.resolve(window.storage.set(STORE_KEY, JSON.stringify(S))).catch(() => {});
+      }
+    } catch (_) {}
+  }, 700);
+}
+async function restore() {
+  try {
+    if (window.storage && typeof window.storage.get === 'function') {
+      const r = await window.storage.get(STORE_KEY);
+      if (r && r.value) {
+        const data = JSON.parse(r.value);
+        if (data && data.meta) { adopt(data); return true; }
+      }
+    }
+  } catch (_) {}
+  return false;
+}
+function adopt(data) {
+  const base = freshState();
+  S = {
+    meta: Object.assign(base.meta, data.meta || {}),
+    signatures: Array.isArray(data.signatures) ? data.signatures : [],
+    defaults: Object.assign(base.defaults, data.defaults || {}),
+    entries: Array.isArray(data.entries) ? data.entries.map(e => Object.assign(blankEntry(), e)) : []
+  };
+}
+
+/* ------------------------------ ui plumbing ------------------------------ */
+let snackTimer = null;
+function toast(msg) {
+  const el = qs('#snackbar');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+function confirmDialog(title, msg, yesLabel) {
+  return new Promise(resolve => {
+    const scrim = qs('#confirmScrim');
+    qs('#confirmTitle').textContent = title;
+    qs('#confirmMsg').textContent = msg;
+    qs('#confirmYes').textContent = yesLabel || 'Confirm';
+    scrim.hidden = false;
+    const done = v => {
+      scrim.hidden = true;
+      qs('#confirmYes').onclick = null;
+      qs('#confirmNo').onclick = null;
+      scrim.onclick = null;
+      resolve(v);
+    };
+    qs('#confirmYes').onclick = () => done(true);
+    qs('#confirmNo').onclick = () => done(false);
+    scrim.onclick = ev => { if (ev.target === scrim) done(false); };
+  });
+}
+function readFileAsDataURL(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(new Error('Could not read that file'));
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ------------------------------ image tools ------------------------------ */
+function trimTransparent(canvas, padPx) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  if (!w || !h) return null;
+  const data = ctx.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 12) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return null;
+  const p = padPx || 6;
+  minX = Math.max(0, minX - p); minY = Math.max(0, minY - p);
+  maxX = Math.min(w - 1, maxX + p); maxY = Math.min(h - 1, maxY + p);
+  const out = document.createElement('canvas');
+  out.width = maxX - minX + 1; out.height = maxY - minY + 1;
+  out.getContext('2d').drawImage(canvas, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
+}
+function imageToSignature(dataURL) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 700 / img.width);
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      const id = ctx.getImageData(0, 0, c.width, c.height);
+      const d = id.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const lum = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000;
+        if (lum > 228) d[i + 3] = 0;                       /* drop the paper */
+        else if (lum > 170) d[i + 3] = Math.round(d[i + 3] * (228 - lum) / 58);
+      }
+      ctx.putImageData(id, 0, 0);
+      const trimmed = trimTransparent(c, 4);
+      trimmed ? resolve(trimmed) : reject(new Error('That image looks blank'));
+    };
+    img.onerror = () => reject(new Error('That file is not an image'));
+    img.src = dataURL;
+  });
+}
+
+/* ------------------------------ signature pad ------------------------------ */
+const Pad = {
+  canvas: null, ctx: null, strokes: [], current: null, onSave: null, width: 2.6,
+  open(name, onSave) {
+    this.onSave = onSave;
+    this.strokes = [];
+    qs('#padName').value = name || '';
+    qs('#padScrim').hidden = false;
+    requestAnimationFrame(() => { this.fit(); this.redraw(); qs('#padName').focus(); });
+  },
+  close() { qs('#padScrim').hidden = true; this.onSave = null; },
+  fit() {
+    const c = this.canvas, dpr = window.devicePixelRatio || 1;
+    const r = c.getBoundingClientRect();
+    c.width = Math.max(1, Math.round(r.width * dpr));
+    c.height = Math.max(1, Math.round(r.height * dpr));
+    this.ctx = c.getContext('2d');
+    this.ctx.scale(dpr, dpr);
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
+    this.ctx.strokeStyle = '#101010';
+  },
+  pt(ev) {
+    const r = this.canvas.getBoundingClientRect();
+    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  },
+  start(ev) {
+    this.canvas.setPointerCapture(ev.pointerId);
+    this.current = { w: this.width, pts: [this.pt(ev)] };
+    this.strokes.push(this.current);
+    this.redraw();
+  },
+  move(ev) {
+    if (!this.current) return;
+    const p = this.pt(ev), pts = this.current.pts;
+    const last = pts[pts.length - 1];
+    if (Math.abs(p.x - last.x) + Math.abs(p.y - last.y) < 1.1) return;
+    pts.push(p);
+    this.redraw();
+  },
+  end() { this.current = null; },
+  redraw() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const r = this.canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    for (const s of this.strokes) {
+      const p = s.pts;
+      ctx.lineWidth = s.w;
+      ctx.beginPath();
+      if (p.length === 1) {
+        ctx.arc(p[0].x, p[0].y, s.w / 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#101010';
+        ctx.fill();
+        continue;
+      }
+      ctx.moveTo(p[0].x, p[0].y);
+      for (let i = 1; i < p.length - 1; i++) {
+        const mx = (p[i].x + p[i + 1].x) / 2, my = (p[i].y + p[i + 1].y) / 2;
+        ctx.quadraticCurveTo(p[i].x, p[i].y, mx, my);
+      }
+      ctx.lineTo(p[p.length - 1].x, p[p.length - 1].y);
+      ctx.stroke();
+    }
+  },
+  result() {
+    if (!this.strokes.length) return null;
+    const r = this.canvas.getBoundingClientRect();
+    const out = document.createElement('canvas');
+    out.width = Math.round(r.width * 2.4);
+    out.height = Math.round(r.height * 2.4);
+    const ctx = out.getContext('2d');
+    ctx.scale(2.4, 2.4);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#101010';
+    for (const s of this.strokes) {
+      const p = s.pts;
+      ctx.lineWidth = s.w;
+      ctx.beginPath();
+      if (p.length === 1) {
+        ctx.arc(p[0].x, p[0].y, s.w / 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#101010'; ctx.fill(); continue;
+      }
+      ctx.moveTo(p[0].x, p[0].y);
+      for (let i = 1; i < p.length - 1; i++) {
+        const mx = (p[i].x + p[i + 1].x) / 2, my = (p[i].y + p[i + 1].y) / 2;
+        ctx.quadraticCurveTo(p[i].x, p[i].y, mx, my);
+      }
+      ctx.lineTo(p[p.length - 1].x, p[p.length - 1].y);
+      ctx.stroke();
+    }
+    return trimTransparent(out, 8);
+  }
+};
+
+function addSignature(name, data) {
+  const sig = { id: uid(), name: name || ('Signature ' + (S.signatures.length + 1)), data: data };
+  S.signatures.push(sig);
+  return sig;
+}
+
+/* ------------------------------ signature picker ------------------------------ */
+let pickTarget = null;        /* {kind:'entry', id, key} | {kind:'default', key} */
+
+function openPicker(target, roleLabel) {
+  pickTarget = target;
+  qs('#pickSub').textContent = roleLabel;
+  renderPicker();
+  qs('#pickScrim').hidden = false;
+}
+function closePicker() { qs('#pickScrim').hidden = true; pickTarget = null; }
+function currentPickValue() {
+  if (!pickTarget) return null;
+  if (pickTarget.kind === 'staff') return S.meta.staffSig;
+  if (pickTarget.kind === 'entry') {
+    const e = S.entries.find(x => x.id === pickTarget.id);
+    return e ? e[pickTarget.key] : null;
+  }
+  return S.defaults[pickTarget.key];
+}
+function renderPicker() {
+  const cur = currentPickValue();
+  const cells = ['<button class="pick none' + (cur ? '' : ' sel') + '" data-sig="">' +
+                 '<div class="ph">Leave blank</div><div class="nm">No signature</div></button>'];
+  for (const s of S.signatures) {
+    cells.push('<button class="pick' + (cur === s.id ? ' sel' : '') + '" data-sig="' + s.id + '">' +
+      '<div class="ph"><img src="' + s.data + '" alt=""></div>' +
+      '<div class="nm">' + esc(s.name) + '</div></button>');
+  }
+  qs('#pickGrid').innerHTML = cells.join('');
+}
+function applyPick(sigId) {
+  if (!pickTarget) return;
+  const val = sigId || null;
+  if (pickTarget.kind === 'staff') {
+    const n = setStaffSignature(val);
+    closePicker(); fillDetails(); renderAll();
+    toast(n ? 'Staff signature applied to ' + n + (n === 1 ? ' entry' : ' entries') : 'Staff signature set');
+    return;
+  }
+  if (pickTarget.kind === 'entry') {
+    const e = S.entries.find(x => x.id === pickTarget.id);
+    if (e) e[pickTarget.key] = val;
+  } else {
+    S.defaults[pickTarget.key] = val;
+  }
+  closePicker();
+  renderAll();
+}
+
+/* ------------------------------ details panel ------------------------------ */
+const META_FIELDS = [
+  ['#mOffice','office'], ['#mIsland','island'], ['#mTitle','title'],
+  ['#mName','name'], ['#mAddress','address'], ['#mPosition','position'],
+  ['#mRecord','record'], ['#mSalary','salary'], ['#mPeriod','period'], ['#mBismillah','bismillah'],
+  ['#mBismillah','bismillah'],
+  ['#mFrom','from'], ['#mTo','to']
+];
+
+function fillDetails() {
+  META_FIELDS.forEach(([sel, key]) => {
+    const el = qs(sel);
+    if (el && el !== document.activeElement) el.value = S.meta[key] || '';
+  });
+  qs('#mPeriodAuto').checked = !!S.meta.periodAuto;
+  qs('#mPeriod').disabled = !!S.meta.periodAuto;
+  qs('#mRows').value = String(S.meta.rowsPerPage);
+  qs('#mDateFmt').value = S.meta.dateFmt;
+  qs('#mTimeFmt').value = S.meta.timeFmt;
+  qs('#mTimeCells').value = S.meta.timeCells;
+  qs('#mShowBismillah').checked = !!S.meta.showBismillah;
+  qs('#mBismillah').disabled = !S.meta.showBismillah;
+  qs('#mSort').checked = !!S.meta.sortByDate;
+  const st = sigById(S.meta.staffSig);
+  qs('#staffSigPrev').innerHTML = st ? '<img src="' + st.data + '" alt="">' : '<span>Not set</span>';
+  qs('#staffSigClear').disabled = !S.meta.staffSig;
+  qs('#logoPrev').src = S.meta.logo || LOGO_DEFAULT;
+  qs('#brandMark').src = S.meta.logo || LOGO_DEFAULT;
+  const a = parseDate(S.meta.from), b = parseDate(S.meta.to);
+  const hint = qs('#periodHint');
+  if (a && b && b < a) { hint.textContent = 'The end date is before the start date.'; hint.style.color = 'var(--error)'; }
+  else if (a && b) {
+    const days = Math.round((b - a) / 86400000) + 1;
+    hint.textContent = days + ' day' + (days === 1 ? '' : 's') + ' in this period.';
+    hint.style.color = '';
+  } else { hint.textContent = 'Pick a start and end date above.'; hint.style.color = ''; }
+}
+function refreshPeriod() {
+  if (S.meta.periodAuto) S.meta.period = periodText(S.meta.from, S.meta.to);
+  const el = qs('#mPeriod');
+  if (el && document.activeElement !== el) el.value = S.meta.period || '';
+}
+
+function bindDetails() {
+  META_FIELDS.forEach(([sel, key]) => {
+    const el = qs(sel);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      S.meta[key] = el.value;
+      if (key === 'from' || key === 'to') { refreshPeriod(); fillDetails(); }
+      changed(false);
+    });
+  });
+  qs('#mPeriodAuto').addEventListener('change', e => {
+    S.meta.periodAuto = e.target.checked;
+    refreshPeriod(); fillDetails(); changed(false);
+  });
+  qs('#mRows').addEventListener('change', e => { S.meta.rowsPerPage = +e.target.value; changed(false); });
+  qs('#mDateFmt').addEventListener('change', e => { S.meta.dateFmt = e.target.value; changed(true); });
+  qs('#mTimeFmt').addEventListener('change', e => { S.meta.timeFmt = e.target.value; changed(true); });
+  qs('#mTimeCells').addEventListener('change', e => { S.meta.timeCells = e.target.value; changed(false); });
+  qs('#mShowBismillah').addEventListener('change', e => {
+    S.meta.showBismillah = e.target.checked; fillDetails(); changed(false);
+  });
+  qs('#mSort').addEventListener('change', e => { S.meta.sortByDate = e.target.checked; changed(true); });
+
+  const announce = n => toast(n ? 'Staff signature applied to ' + n + (n === 1 ? ' entry' : ' entries')
+                                : 'Staff signature saved');
+  qs('#staffSigDraw').addEventListener('click', () => {
+    Pad.open(S.meta.name || 'Staff', data => {
+      const sig = addSignature(qs('#padName').value.trim() || S.meta.name || 'Staff', data);
+      const n = setStaffSignature(sig.id);
+      fillDetails(); renderAll(); announce(n);
+    });
+  });
+  qs('#staffSigUpload').addEventListener('click', () => { uploadTarget = { kind: 'staff' }; qs('#fileImg').click(); });
+  qs('#staffSigChoose').addEventListener('click', () => openPicker({ kind: 'staff' }, 'Staff signature'));
+  qs('#staffSigClear').addEventListener('click', () => {
+    setStaffSignature(null); fillDetails(); renderAll(); toast('Staff signature cleared');
+  });
+
+  qs('#btnLogo').addEventListener('click', () => qs('#fileLogo').click());
+  qs('#fileLogo').addEventListener('change', async e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      S.meta.logo = await readFileAsDataURL(f);
+      changed(false); toast('Emblem replaced');
+    } catch (err) { toast(err.message); }
+  });
+  qs('#btnLogoReset').addEventListener('click', () => {
+    S.meta.logo = LOGO_DEFAULT; changed(false); toast('Default emblem restored');
+  });
+  qs('#btnReset').addEventListener('click', async () => {
+    const ok = await confirmDialog('Start a new sheet?',
+      'Entries, signatures and details in this sheet will be cleared. Save the file first if you want to keep it.',
+      'Clear everything');
+    if (!ok) return;
+    S = freshState();
+    seedPeriod();
+    openCards.clear();
+    renderAll(); fillDetails();
+    toast('New sheet ready');
+  });
+}
+function seedPeriod() {
+  if (S.meta.from && S.meta.to) return;
+  const now = new Date();
+  const a = new Date(now.getFullYear(), now.getMonth(), 16);
+  const b = new Date(now.getFullYear(), now.getMonth() + 1, 15);
+  S.meta.from = a.getFullYear() + '-' + pad2(a.getMonth() + 1) + '-' + pad2(a.getDate());
+  S.meta.to   = b.getFullYear() + '-' + pad2(b.getMonth() + 1) + '-' + pad2(b.getDate());
+  refreshPeriod();
+}
+
+/* ------------------------------ entries panel ------------------------------ */
+function sigBoxHTML(e, role) {
+  const s = sigById(e[role.key]);
+  return '<button type="button" class="sig-slot' + (s ? ' set' : '') + '" data-sigslot="' + role.key + '">' +
+    '<div class="role">' + role.en + '<b>' + role.dv + '</b></div>' +
+    '<div class="box">' + (s ? '<img src="' + s.data + '" alt="' + esc(s.name) + '">' : '<span>Tap to add</span>') + '</div>' +
+    '</button>';
+}
+
+function inputLocale() { return S.meta.timeFmt === '12' ? 'en-US' : 'en-GB'; }
+
+function entryHTML(e, i) {
+  const open = openCards.has(e.id);
+  const lg = ' lang="' + inputLocale() + '"';
+  const mins = entryMinutes(e);
+  const hol = isHoliday(e);
+  const warn = [];
+  if (!e.date) warn.push('<span class="chip warnc">No date</span>');
+  else if (outOfPeriod(e)) warn.push('<span class="chip warnc">Outside the period</span>');
+  if (e.totalAuto && (!e.startTime || !e.endTime)) warn.push('<span class="chip warnc">No times</span>');
+
+  const head =
+    '<div class="entry-head" data-toggle>' +
+      '<span class="idx">' + (i + 1) + '</span>' +
+      '<div class="entry-sum">' +
+        '<span class="d">' + (e.date ? esc(fmtDate(e.date)) : 'New entry') + '</span>' +
+        '<span class="dv">' + esc(dayName(e)) + '</span>' +
+        (e.startTime || e.endTime
+          ? '<span class="t">' + esc(fmtTime(e.startTime)) + ' – ' + esc(fmtTime(e.endTime)) + '</span>' : '') +
+        '<span class="chip tot">' + fmtHM(mins) + '</span>' +
+        (hol ? '<span class="chip hol">ބަންދު</span>' : '') +
+        warn.join('') +
+      '</div>' +
+      '<button class="btn icon small" data-dup title="Duplicate">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/></svg></button>' +
+      '<button class="btn icon small danger" data-del title="Delete">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' +
+      '<button class="btn icon small" data-toggle title="' + (open ? 'Collapse' : 'Expand') + '">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(' + (open ? 180 : 0) + 'deg)">' +
+        '<path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg></button>' +
+    '</div>';
+
+  if (!open) return '<div class="entry" data-entry="' + e.id + '">' + head + '</div>';
+
+  const body =
+    '<div class="entry-body">' +
+      '<div class="subhead">When</div>' +
+      '<div class="grid">' +
+        '<div class="tf"><label>Date <span class="dvlab">ތާރީޚް</span></label>' +
+          '<input type="date"' + lg + ' data-f="date" value="' + esc(e.date) + '"></div>' +
+        '<div class="tf rtl"><label>Day <span class="dvlab">ދުވަސް</span></label>' +
+          '<input type="text" data-f="dayText" value="' + esc(dayName(e)) + '"' + (e.dayAuto ? ' readonly' : '') + '>' +
+          '<div class="hint">' + (e.dayAuto ? 'Filled from the date' : 'Typed by hand') + '</div></div>' +
+        '<div class="tf"><label>Day type</label>' +
+          '<select data-f="dayType">' +
+            '<option value="auto"' + (e.dayType === 'auto' ? ' selected' : '') + '>Automatic (Fri &amp; Sat are off)</option>' +
+            '<option value="official"' + (e.dayType === 'official' ? ' selected' : '') + '>Official day — ރަސްމީ</option>' +
+            '<option value="holiday"' + (e.dayType === 'holiday' ? ' selected' : '') + '>Day off — ބަންދު</option>' +
+          '</select></div>' +
+      '</div>' +
+      '<label class="sw"><input type="checkbox" data-f="dayAuto"' + (e.dayAuto ? ' checked' : '') + '><span class="track"></span>' +
+        '<span class="lbl">Name the day automatically<small>Turn off to write the day yourself</small></span></label>' +
+
+      '<div class="subhead">Hours</div>' +
+      '<div class="grid">' +
+        '<div class="tf"><label>Permission asked at <span class="dvlab">ހުއްދައަށް އެދިލެއްވި ގަޑި</span></label>' +
+          '<input type="time"' + lg + ' data-f="reqTime" value="' + esc(e.reqTime) + '"></div>' +
+        '<div class="tf"><label>Started <span class="dvlab">މަސައްކަތް ފެށި</span></label>' +
+          '<input type="time"' + lg + ' data-f="startTime" value="' + esc(e.startTime) + '"></div>' +
+        '<div class="tf"><label>Ended <span class="dvlab">މަސައްކަތް ނިއްމި</span></label>' +
+          '<input type="time"' + lg + ' data-f="endTime" value="' + esc(e.endTime) + '">' +
+          '<div class="hint">' + (S.meta.timeFmt === '12' ? '12-hour, e.g. 7:30 PM' : '24-hour, e.g. 19:30') + '</div></div>' +
+      '</div>' +
+      (overnight(e) ? '<p style="margin:10px 2px 0;font-size:12.5px;color:var(--warn)">Counted as running past midnight.</p>' : '') +
+      '<label class="sw"><input type="checkbox" data-f="totalAuto"' + (e.totalAuto ? ' checked' : '') + '><span class="track"></span>' +
+        '<span class="lbl">Work the total out for me<small>Turn off to enter hours and minutes yourself</small></span></label>' +
+      (e.totalAuto ? '' :
+        '<div class="grid" style="margin-top:6px">' +
+          '<div class="tf"><label>Hours <span class="dvlab">ގަޑި</span></label>' +
+            '<input type="number" min="0" max="99" data-f="totH" value="' + (+e.totH || 0) + '"></div>' +
+          '<div class="tf"><label>Minutes <span class="dvlab">މިނިޓް</span></label>' +
+            '<input type="number" min="0" max="59" data-f="totM" value="' + (+e.totM || 0) + '"></div>' +
+        '</div>') +
+
+      '<div class="subhead">What was done</div>' +
+      '<div class="tf rtl"><label>Details <span class="dvlab">މަސައްކަތުގެ ތަފްސީލް</span></label>' +
+        '<textarea data-f="desc" rows="3">' + esc(e.desc) + '</textarea></div>' +
+
+      '<div class="subhead">Signatures</div>' +
+      '<div class="sig-slots">' + ROLES.map(r => sigBoxHTML(e, r)).join('') + '</div>' +
+    '</div>';
+
+  return '<div class="entry open" data-entry="' + e.id + '">' + head + body + '</div>';
+}
+
+function renderEntries() {
+  const list = qs('#entryList');
+  const items = sortedEntries();
+  qs('#cntEntries').textContent = String(S.entries.length);
+
+  if (!items.length) {
+    list.innerHTML =
+      '<div class="empty"><h3>No overtime entries yet</h3>' +
+      '<p>Add one for each time you worked extra hours in this period.</p>' +
+      '<button class="btn filled" id="emptyAdd">Add the first entry</button></div>';
+    const b = qs('#emptyAdd');
+    if (b) b.addEventListener('click', addEntry);
+  } else {
+    list.innerHTML = items.map(entryHTML).join('');
+  }
+
+  let off = 0, hol = 0;
+  S.entries.forEach(e => { const m = entryMinutes(e); isHoliday(e) ? hol += m : off += m; });
+  qs('#sumOfficial').textContent = fmtHM(off);
+  qs('#sumHoliday').textContent = fmtHM(hol);
+  qs('#sumCount').textContent = S.entries.length + (S.entries.length === 1 ? ' entry' : ' entries');
+}
+
+function addEntry() {
+  const last = S.entries[S.entries.length - 1];
+  let date = S.meta.from || todayISO();
+  if (last && last.date) {
+    const d = parseDate(last.date);
+    if (d) { d.setDate(d.getDate() + 1); date = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  }
+  const b = parseDate(S.meta.to), d2 = parseDate(date);
+  if (b && d2 && d2 > b) date = S.meta.to;
+  const e = blankEntry({ date: date });
+  S.entries.push(e);
+  openCards.clear();
+  openCards.add(e.id);
+  changed(true);
+  requestAnimationFrame(() => {
+    const el = qs('[data-entry="' + e.id + '"]');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+
+function bindEntries() {
+  const list = qs('#entryList');
+
+  list.addEventListener('click', ev => {
+    const card = ev.target.closest('[data-entry]');
+    if (!card) return;
+    const id = card.dataset.entry;
+    const e = S.entries.find(x => x.id === id);
+    if (!e) return;
+
+    if (ev.target.closest('[data-del]')) {
+      confirmDialog('Delete this entry?', 'Entry for ' + (fmtDate(e.date) || 'no date') + ' will be removed.', 'Delete')
+        .then(ok => { if (ok) { S.entries = S.entries.filter(x => x.id !== id); openCards.delete(id); changed(true); toast('Entry deleted'); } });
+      return;
+    }
+    if (ev.target.closest('[data-dup]')) {
+      const copy = Object.assign({}, e, { id: uid() });
+      S.entries.splice(S.entries.indexOf(e) + 1, 0, copy);
+      openCards.add(copy.id);
+      changed(true); toast('Entry duplicated');
+      return;
+    }
+    const slot = ev.target.closest('[data-sigslot]');
+    if (slot) {
+      const role = ROLES.find(r => r.key === slot.dataset.sigslot);
+      openPicker({ kind: 'entry', id: id, key: role.key }, role.en + ' — ' + role.dv);
+      return;
+    }
+    if (ev.target.closest('[data-toggle]')) {
+      openCards.has(id) ? openCards.delete(id) : openCards.add(id);
+      renderEntries();
+    }
+  });
+
+  const onField = (ev, isChange) => {
+    const card = ev.target.closest('[data-entry]');
+    if (!card) return;
+    const e = S.entries.find(x => x.id === card.dataset.entry);
+    const f = ev.target.dataset.f;
+    if (!e || !f) return;
+
+    if (ev.target.type === 'checkbox') e[f] = ev.target.checked;
+    else if (ev.target.type === 'number') e[f] = ev.target.value === '' ? 0 : +ev.target.value;
+    else e[f] = ev.target.value;
+
+    if (f === 'dayText') e.dayAuto = false;
+    if (f === 'date' && e.dayAuto) {
+      const nameEl = qs('[data-f="dayText"]', card);
+      if (nameEl) nameEl.value = dayName(e);
+    }
+    if (f === 'dayAuto') {
+      const w = dowOf(e);
+      if (!e.dayAuto && !e.dayText && w != null) e.dayText = DV_DAYS[w];
+    }
+    if (f === 'dayAuto' || f === 'totalAuto') { renderEntries(); scheduleSheet(); autosave(); return; }
+    if (f === 'date' && isChange && S.meta.sortByDate) { renderEntries(); scheduleSheet(); autosave(); return; }
+
+    updateSummaryRow(card, e);
+    scheduleSheet();
+    autosave();
+  };
+  list.addEventListener('input', ev => onField(ev, false));
+  list.addEventListener('change', ev => {
+    if (ev.target.type === 'checkbox' || ev.target.tagName === 'SELECT' || ev.target.type === 'date') onField(ev, true);
+  });
+
+  qs('#fabAdd').addEventListener('click', addEntry);
+}
+
+function updateSummaryRow(card, e) {
+  const sum = qs('.entry-sum', card);
+  if (!sum) return;
+  const mins = entryMinutes(e), hol = isHoliday(e);
+  const warn = [];
+  if (!e.date) warn.push('<span class="chip warnc">No date</span>');
+  else if (outOfPeriod(e)) warn.push('<span class="chip warnc">Outside the period</span>');
+  if (e.totalAuto && (!e.startTime || !e.endTime)) warn.push('<span class="chip warnc">No times</span>');
+  sum.innerHTML =
+    '<span class="d">' + (e.date ? esc(fmtDate(e.date)) : 'New entry') + '</span>' +
+    '<span class="dv">' + esc(dayName(e)) + '</span>' +
+    ((e.startTime || e.endTime)
+      ? '<span class="t">' + esc(fmtTime(e.startTime)) + ' – ' + esc(fmtTime(e.endTime)) + '</span>' : '') +
+    '<span class="chip tot">' + fmtHM(mins) + '</span>' +
+    (hol ? '<span class="chip hol">ބަންދު</span>' : '') + warn.join('');
+  let off = 0, h = 0;
+  S.entries.forEach(x => { const m = entryMinutes(x); isHoliday(x) ? h += m : off += m; });
+  qs('#sumOfficial').textContent = fmtHM(off);
+  qs('#sumHoliday').textContent = fmtHM(h);
+}
+
+/* ------------------------------ signatures panel ------------------------------ */
+function renderSignatures() {
+  qs('#cntSigs').textContent = String(S.signatures.length);
+  const lib = qs('#sigLibrary');
+  if (!S.signatures.length) {
+    lib.innerHTML = '<div class="empty"><h3>No signatures saved</h3>' +
+      '<p>Draw one with your finger or upload a photo of a signature on white paper.</p></div>';
+  } else {
+    lib.innerHTML = '<div class="sig-grid">' + S.signatures.map(s =>
+      '<div class="sig-card" data-sig="' + s.id + '">' +
+        '<div class="prev"><img src="' + s.data + '" alt="' + esc(s.name) + '"></div>' +
+        '<div class="meta"><input type="text" value="' + esc(s.name) + '" data-rename aria-label="Signature label">' +
+          '<button class="btn icon small danger" data-sigdel title="Delete">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' +
+        '</div></div>').join('') + '</div>';
+  }
+
+  qs('#roleDefaults').innerHTML = ROLES.map(r => {
+    const s = sigById(S.defaults[r.key]);
+    return '<div class="role-row" data-role="' + r.key + '">' +
+      '<div class="rname"><div class="dv">' + r.dv + '</div><small>' + r.en + '</small></div>' +
+      '<div class="rprev">' + (s ? '<img src="' + s.data + '" alt="">' : '<span>Blank</span>') + '</div>' +
+      '<button class="btn small outlined" data-rolepick>Change</button>' +
+      '<button class="btn small tonal" data-roleall>Apply to all</button>' +
+    '</div>';
+  }).join('');
+}
+
+function bindSignatures() {
+  qs('#btnDrawNew').addEventListener('click', () => {
+    Pad.open('', data => { const s = addSignature(qs('#padName').value.trim(), data); changed(true); toast('Saved “' + s.name + '”'); });
+  });
+  qs('#btnUploadNew').addEventListener('click', () => { uploadTarget = null; qs('#fileImg').click(); });
+
+  qs('#sigLibrary').addEventListener('input', ev => {
+    if (!ev.target.matches('[data-rename]')) return;
+    const card = ev.target.closest('[data-sig]');
+    const s = sigById(card.dataset.sig);
+    if (s) { s.name = ev.target.value; scheduleSheet(); autosave(); }
+  });
+  qs('#sigLibrary').addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-sigdel]');
+    if (!btn) return;
+    const id = btn.closest('[data-sig]').dataset.sig;
+    const s = sigById(id);
+    const used = S.entries.filter(e => ROLES.some(r => e[r.key] === id)).length;
+    confirmDialog('Delete “' + (s ? s.name : '') + '”?',
+      used ? 'It is used in ' + used + ' entr' + (used === 1 ? 'y' : 'ies') + '. Those cells will be left blank.'
+           : 'This signature will be removed from your saved list.', 'Delete')
+      .then(ok => {
+        if (!ok) return;
+        S.signatures = S.signatures.filter(x => x.id !== id);
+        S.entries.forEach(e => ROLES.forEach(r => { if (e[r.key] === id) e[r.key] = null; }));
+        ROLES.forEach(r => { if (S.defaults[r.key] === id) S.defaults[r.key] = null; });
+        changed(true); toast('Signature deleted');
+      });
+  });
+
+  qs('#roleDefaults').addEventListener('click', ev => {
+    const row = ev.target.closest('[data-role]');
+    if (!row) return;
+    const role = ROLES.find(r => r.key === row.dataset.role);
+    if (ev.target.closest('[data-rolepick]')) {
+      openPicker({ kind: 'default', key: role.key }, role.en + ' — ' + role.dv);
+    } else if (ev.target.closest('[data-roleall]')) {
+      if (!S.entries.length) { toast('There are no entries to fill yet'); return; }
+      S.entries.forEach(e => { e[role.key] = S.defaults[role.key]; });
+      changed(true);
+      toast(S.defaults[role.key] ? 'Applied to ' + S.entries.length + ' entries' : 'Cleared on ' + S.entries.length + ' entries');
+    }
+  });
+}
+
+/* ------------------------------ the printed sheet ------------------------------ */
+const COLS = [6.23, 3.46, 3.11, 3.29, 3.63, 5.88, 3.46, 3.11, 6.06, 3.29, 2.77, 26.30, 5.71, 4.84, 5.71, 5.71, 7.44];
+
+function sheetHeadHTML() {
+  const m = S.meta;
+  const bits = [];
+  if (m.name)     bits.push('<span>މުވައްޒަފުގެ ނަން: ' + esc(m.name) + '</span>');
+  if (m.address)  bits.push('<span>އެޑްރެސް: ' + esc(m.address) + '</span>');
+  if (m.position) bits.push('<span>މަޤާމް: ' + esc(m.position) + '</span>');
+  if (m.record)   bits.push('<span>ރެކޯޑް ކާޑު ނަންބަރު: ' + esc(m.record) + '</span>');
+  if (m.salary)   bits.push('<span>މުސާރަ: ' + esc(m.salary) + 'ރ</span>');
+  return '<div class="sheet-head">' +
+    (m.bismillah ? '<div class="bismillah">' + esc(m.bismillah) + '</div>' : '') +
+    (m.logo ? '<img class="emblem" src="' + m.logo + '" alt="">' : '') +
+    '<div class="office">' + esc(m.office) + '</div>' +
+    '<div class="island">' + esc(m.island) + '</div>' +
+    '<div class="title">' + esc(m.title) + '</div>' +
+    '<div class="period">' + esc(m.period) + '</div>' +
+  '</div>' +
+  (bits.length ? '<div class="sheet-info">' + bits.join('') + '</div>' : '<div class="sheet-info"></div>');
+}
+
+function tableHeadHTML() {
+  return '<colgroup>' + COLS.map(w => '<col style="width:' + w + '%">').join('') + '</colgroup>' +
+  '<thead>' +
+    '<tr>' +
+      '<th rowspan="3">ޗެކުކުރި ސޮއި</th>' +
+      '<th colspan="4">މަސައްކަތްކުރި ގަޑީގެ ޖުމްލަ</th>' +
+      '<th colspan="3" rowspan="2">މަސައްކަތް ނިއްމި</th>' +
+      '<th colspan="3" rowspan="2">މަސައްކަތް ފެށި</th>' +
+      '<th rowspan="3">މަސައްކަތުގެ ތަފްސީލް</th>' +
+      '<th rowspan="3">ހުއްދަ ދެއްވި ސޮއި</th>' +
+      '<th colspan="2" rowspan="2">ހުއްދައަށް އެދިލެއްވި</th>' +
+      '<th colspan="2" rowspan="2">މަސައްކަތްކުރި</th>' +
+    '</tr>' +
+    '<tr><th colspan="2">ބަންދު ދުވަސްތައް</th><th colspan="2">ރަސްމީ ދުވަސްތައް</th></tr>' +
+    '<tr>' +
+      '<th colspan="2"><div>ގަޑި</div><div>މިނިޓް</div></th>' +
+      '<th colspan="2"><div>ގަޑި</div><div>މިނިޓް</div></th>' +
+      '<th>ސޮއި</th><th colspan="2">ގަޑި</th>' +
+      '<th>ސޮއި</th><th colspan="2">ގަޑި</th>' +
+      '<th>ގަޑި</th><th>ސޮއި</th>' +
+      '<th>ދުވަސް</th><th>ތާރީޚް</th>' +
+    '</tr>' +
+  '</thead>';
+}
+
+function timeCells(t) {
+  if (S.meta.timeCells === 'merged') return '<td class="num" colspan="2">' + esc(fmtTime(t)) + '</td>';
+  const mins = toMinutes(t);
+  if (mins == null) return '<td class="num"></td><td class="num"></td>';
+  const h = Math.floor(mins / 60), mi = mins % 60;
+  let left, right;
+  if (S.meta.timeFmt === '12') {
+    right = (h % 12 === 0 ? 12 : h % 12) + ':' + pad2(mi);
+    left = h < 12 ? 'AM' : 'PM';
+  } else { right = pad2(h); left = pad2(mi); }
+  return '<td class="num">' + left + '</td><td class="num">' + right + '</td>';
+}
+
+function sigCell(id, cls) {
+  const s = sigById(id);
+  return '<td class="sig ' + (cls || '') + '">' + (s ? '<img src="' + s.data + '" alt="">' : '') + '</td>';
+}
+
+/* the two boxes under ގަޑި are hours (right) and minutes (left), read right to left */
+function timePair(t) {
+  if (S.meta.timeFmt === '12') return '<td class="num" colspan="2">' + esc(fmtTime(t)) + '</td>';
+  const mins = toMinutes(t);
+  if (mins == null) return '<td class="num"></td><td class="num"></td>';
+  return '<td class="num">' + pad2(mins % 60) + '</td>' +
+         '<td class="num">' + pad2(Math.floor(mins / 60)) + '</td>';
+}
+
+function rowHTML(e) {
+  if (!e) {
+    return '<tr>' + '<td class="sig"></td>' + '<td></td><td></td><td></td><td></td>' +
+      '<td class="sig"></td>' + timePair('') +
+      '<td class="sig"></td>' + timePair('') +
+      '<td class="desc"></td>' + '<td class="sig"></td>' + '<td></td>' + '<td class="sig"></td>' +
+      '<td></td><td></td>' + '</tr>';
+  }
+  const mins = entryMinutes(e), hol = isHoliday(e);
+  const h = mins ? String(Math.floor(mins / 60)) : '';
+  const mm = mins ? pad2(mins % 60) : '';
+  const dateCls = S.meta.dateFmt === 'dvfull' ? '' : 'num';
+  return '<tr>' +
+    sigCell(e.sigChk) +
+    '<td class="num">' + (hol ? mm : '') + '</td><td class="num">' + (hol ? h : '') + '</td>' +
+    '<td class="num">' + (hol ? '' : mm) + '</td><td class="num">' + (hol ? '' : h) + '</td>' +
+    sigCell(e.sigEnd) + timePair(e.endTime) +
+    sigCell(e.sigStart) + timePair(e.startTime) +
+    '<td class="desc">' + esc(e.desc) + '</td>' +
+    sigCell(e.sigApp) +
+    '<td class="num">' + esc(fmtTime(e.reqTime)) + '</td>' +
+    sigCell(e.sigReq) +
+    '<td>' + esc(dayName(e)) + '</td>' +
+    '<td class="' + dateCls + '">' + esc(fmtDate(e.date)) + '</td>' +
+  '</tr>';
+}
+
+function renderSheet() {
+  const per = Math.max(1, +S.meta.rowsPerPage || 6);
+  const items = sortedEntries();
+  const pages = [];
+  for (let i = 0; i < items.length; i += per) pages.push(items.slice(i, i + per));
+  if (!pages.length) pages.push([]);
+
+  const rowh = Math.max(7.6, Math.min(12.8, 78 / per)).toFixed(2) + 'mm';
+  const html = pages.map((rows, pi) => {
+    const body = [];
+    for (let i = 0; i < per; i++) body.push(rowHTML(rows[i]));
+    return '<div class="paper">' + sheetHeadHTML() +
+      '<table class="ot" style="--rowh:' + rowh + '">' + tableHeadHTML() + '<tbody>' + body.join('') + '</tbody></table>' +
+      (pages.length > 1 ? '<div class="pagemark">ޞަފްޙާ ' + (pi + 1) + ' / ' + pages.length + '</div>' : '') +
+      '</div>';
+  }).join('');
+
+  qs('#previewStage').innerHTML = html;
+  qs('#pageInfo').textContent = pages.length + (pages.length === 1 ? ' page' : ' pages') +
+    ' · ' + items.length + (items.length === 1 ? ' entry' : ' entries');
+  applyZoom();
+}
+
+let sheetTimer = null;
+function scheduleSheet() { clearTimeout(sheetTimer); sheetTimer = setTimeout(renderSheet, 160); }
+
+/* ------------------------------ zoom ------------------------------ */
+let zoom = 'fit';
+function applyZoom() {
+  const stage = qs('#previewStage'), fit = qs('#previewFit'), scroll = qs('#previewScroll');
+  if (!stage || !fit || !scroll) return;
+  stage.style.width = PAPER_PX + 'px';
+  const k = zoom === 'fit' ? Math.min(1, Math.max(0.2, (scroll.clientWidth - 4) / PAPER_PX)) : zoom;
+  stage.style.transform = 'scale(' + k + ')';
+  fit.style.width = Math.ceil(PAPER_PX * k) + 'px';
+  fit.style.height = Math.ceil(stage.offsetHeight * k) + 'px';
+  qs('#zoomLabel').textContent = zoom === 'fit' ? 'Fit' : Math.round(k * 100) + '%';
+}
+function bindZoom() {
+  qs('#zoomIn').addEventListener('click', () => {
+    const cur = zoom === 'fit' ? Math.min(1, (qs('#previewScroll').clientWidth - 4) / PAPER_PX) : zoom;
+    zoom = Math.min(2, Math.round((cur + 0.1) * 10) / 10); applyZoom();
+  });
+  qs('#zoomOut').addEventListener('click', () => {
+    const cur = zoom === 'fit' ? Math.min(1, (qs('#previewScroll').clientWidth - 4) / PAPER_PX) : zoom;
+    zoom = Math.max(0.2, Math.round((cur - 0.1) * 10) / 10); applyZoom();
+  });
+  qs('#zoomFit').addEventListener('click', () => { zoom = 'fit'; applyZoom(); });
+  window.addEventListener('resize', () => { if (zoom === 'fit') applyZoom(); });
+}
+
+/* ------------------------------ file in / out ------------------------------ */
+function saveFile() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  const tag = (S.meta.from || todayISO()).slice(0, 7);
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ot-sheet-' + tag + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Sheet saved to your downloads');
+}
+function bindFiles() {
+  qs('#btnSave').addEventListener('click', saveFile);
+  qs('#btnOpen').addEventListener('click', () => qs('#fileJson').click());
+  qs('#fileJson').addEventListener('change', async ev => {
+    const f = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (!data || !data.meta) throw new Error('bad');
+      adopt(data);
+      openCards.clear();
+      fillDetails(); renderAll();
+      toast('Opened ' + f.name);
+    } catch (_) { toast('That file is not an overtime sheet'); }
+  });
+  qs('#btnPrint').addEventListener('click', doPrint);
+  qs('#btnPrint2').addEventListener('click', doPrint);
+}
+function doPrint() {
+  if (activeTab !== 'sheet') setTab('sheet');
+  renderSheet();
+  setTimeout(() => window.print(), 260);
+}
+
+/* ------------------------------ uploads ------------------------------ */
+let uploadTarget = null;    /* null = add to library only */
+function bindUploads() {
+  qs('#fileImg').addEventListener('change', async ev => {
+    const f = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!f) return;
+    try {
+      const data = await imageToSignature(await readFileAsDataURL(f));
+      const s = addSignature(f.name.replace(/\.[^.]+$/, ''), data);
+      if (uploadTarget) {
+        if (uploadTarget.kind === 'staff') {
+          const n = setStaffSignature(s.id);
+          uploadTarget = null; closePicker(); fillDetails(); renderAll();
+          toast(n ? 'Staff signature applied to ' + n + (n === 1 ? ' entry' : ' entries') : 'Staff signature set');
+          return;
+        }
+        if (uploadTarget.kind === 'entry') {
+          const e = S.entries.find(x => x.id === uploadTarget.id);
+          if (e) e[uploadTarget.key] = s.id;
+        } else S.defaults[uploadTarget.key] = s.id;
+        uploadTarget = null;
+        closePicker();
+      }
+      changed(true);
+      toast('Signature added');
+    } catch (err) { toast(err.message || 'Could not use that image'); }
+  });
+}
+
+/* ------------------------------ tabs ------------------------------ */
+function setTab(name) {
+  activeTab = name;
+  qsa('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+  ['details', 'entries', 'sheet'].forEach(n => { qs('#panel-' + n).hidden = n !== name; });
+  qs('#fabAdd').hidden = name !== 'entries';
+  if (name === 'sheet') { renderSheet(); }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ------------------------------ orchestration ------------------------------ */
+function renderAll() {
+  renderEntries();
+  renderSignatures();
+  renderSheet();
+  autosave();
+}
+function changed(structural) {
+  if (structural) renderAll();
+  else { scheduleSheet(); autosave(); }
+}
+
+function bindDialogs() {
+  Pad.canvas = qs('#padCanvas');
+  Pad.canvas.addEventListener('pointerdown', e => { e.preventDefault(); Pad.start(e); });
+  Pad.canvas.addEventListener('pointermove', e => { e.preventDefault(); Pad.move(e); });
+  window.addEventListener('pointerup', () => Pad.end());
+  qs('#padWidth').addEventListener('input', e => { Pad.width = +e.target.value; });
+  qs('#padUndo').addEventListener('click', () => { Pad.strokes.pop(); Pad.redraw(); });
+  qs('#padClear').addEventListener('click', () => { Pad.strokes = []; Pad.redraw(); });
+  qs('#padCancel').addEventListener('click', () => Pad.close());
+  qs('#padSave').addEventListener('click', () => {
+    const data = Pad.result();
+    if (!data) { toast('Draw a signature first'); return; }
+    const cb = Pad.onSave;
+    Pad.close();
+    if (cb) cb(data);
+  });
+  qs('#padScrim').addEventListener('click', e => { if (e.target === qs('#padScrim')) Pad.close(); });
+
+  qs('#pickGrid').addEventListener('click', e => {
+    const b = e.target.closest('[data-sig]');
+    if (b) applyPick(b.dataset.sig || null);
+  });
+  qs('#pickCancel').addEventListener('click', closePicker);
+  qs('#pickScrim').addEventListener('click', e => { if (e.target === qs('#pickScrim')) closePicker(); });
+  qs('#pickDraw').addEventListener('click', () => {
+    const t = pickTarget;
+    Pad.open('', data => {
+      const s = addSignature(qs('#padName').value.trim(), data);
+      pickTarget = t;
+      applyPick(s.id);
+      toast('Signature added');
+    });
+  });
+  qs('#pickUpload').addEventListener('click', () => { uploadTarget = pickTarget; qs('#fileImg').click(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!qs('#padScrim').hidden) Pad.close();
+    else if (!qs('#pickScrim').hidden) closePicker();
+    else if (!qs('#confirmScrim').hidden) qs('#confirmNo').click();
+  });
+}
+
+async function init() {
+  qsa('.tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+  bindDetails(); bindEntries(); bindSignatures(); bindDialogs();
+  bindFiles(); bindUploads(); bindZoom();
+
+  const had = await restore();
+  if (!had) seedPeriod();
+  refreshPeriod();
+  fillDetails();
+  renderAll();
+  setTab('details');
+  window.scrollTo(0, 0);
+
+  window.addEventListener('beforeprint', () => {
+    ['details', 'entries'].forEach(n => { qs('#panel-' + n).hidden = true; });
+    qs('#panel-sheet').hidden = false;
+  });
+  window.addEventListener('afterprint', () => setTab(activeTab));
+}
+
+document.addEventListener('DOMContentLoaded', init);
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Council Sheets — Maaungoodhoo Council</title>
+<style>
+  :root{
+    --primary:#00696e; --on-primary:#ffffff;
+    --primary-container:#9cf0f5; --on-primary-container:#002022;
+    --surface:#fbfdfd; --surface-1:#f2f8f8; --surface-2:#eaf2f2; --surface-3:#e2ecec;
+    --on-surface:#191c1c; --on-surface-var:#3f4949;
+    --outline:#6f7979; --outline-var:#c3cccc;
+    --e1:0 1px 2px rgba(0,0,0,.30),0 1px 3px 1px rgba(0,0,0,.15);
+    --e2:0 1px 2px rgba(0,0,0,.30),0 2px 6px 2px rgba(0,0,0,.15);
+    --thaana:'Faruma','A_Faruma','MV Faseyha','MV Boli','Noto Sans Thaana',sans-serif;
+    --latin:'Roboto','Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--surface-1); color:var(--on-surface); font-family:var(--latin);
+       min-height:100vh; display:flex; flex-direction:column}
+  header{padding:32px 24px 8px; text-align:center}
+  header h1{margin:0; font-size:22px; font-weight:500}
+  header p{margin:6px 0 0; font-size:13px; color:var(--on-surface-var); font-family:var(--thaana); direction:rtl}
+  main{flex:1; display:flex; align-items:center; justify-content:center; padding:24px}
+  .cards{display:grid; grid-template-columns:repeat(2,minmax(220px,300px)); gap:20px; max-width:680px; width:100%}
+  @media (max-width:560px){ .cards{grid-template-columns:1fr} }
+  .card{
+    background:var(--surface); border-radius:20px; box-shadow:var(--e1); padding:28px 24px;
+    text-decoration:none; color:var(--on-surface); display:flex; flex-direction:column; gap:10px;
+    transition:box-shadow .15s, transform .15s;
+  }
+  .card:hover{box-shadow:var(--e2); transform:translateY(-2px)}
+  .card .icon{
+    width:52px; height:52px; border-radius:16px; background:var(--primary-container);
+    color:var(--on-primary-container); display:grid; place-items:center; flex:none;
+  }
+  .card .icon svg{width:28px; height:28px}
+  .card h2{margin:0; font-size:17px; font-weight:500}
+  .card p{margin:0; font-size:13px; color:var(--on-surface-var); line-height:1.5}
+  .card .dv{font-family:var(--thaana); direction:rtl; font-size:13px; color:var(--on-surface-var)}
+  .card .go{margin-top:auto; font-size:13px; font-weight:500; color:var(--primary)}
+  footer{text-align:center; padding:18px; font-size:12px; color:var(--on-surface-var)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Council Sheets</h1>
+  <p>ހާޟިރީ އަދި އިތުރުގަޑީގެ ފޯމުތައް — Maaungoodhoo Council</p>
+</header>
+
+<main>
+  <div class="cards">
+    <a class="card" href="attendance.html">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10z"/></svg></div>
+      <h2>Attendance sheet</h2>
+      <p class="dv">ހާޟިރީ ޝީޓު ހަދާ ފޯމު</p>
+      <p>Build a monthly attendance sheet for a staff roster — rest days, holidays, signatures, and one Word file per staff member.</p>
+      <span class="go">Open builder →</span>
+    </a>
+    <a class="card" href="overtime.html">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.6 4 2.3-.9 1.6L11 13V6h2v6.6z"/></svg></div>
+      <h2>Overtime sheet</h2>
+      <p class="dv">އިތުރުގަޑީގެ ޙާޟިރީ</p>
+      <p>Record overtime entries for one employee — times, descriptions, signatures — and print an A4 overtime sheet.</p>
+      <span class="go">Open builder →</span>
+    </a>
+  </div>
+</main>
+
+<footer>Data is saved in your browser. Use the Save/Backup options in each tool to keep a copy of your file.</footer>
+
+</body>
+</html>
