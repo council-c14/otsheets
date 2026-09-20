@@ -446,6 +446,32 @@ const FRAG  = JSON.parse(TD.decode(b64ToBytes(PAYLOAD.frag)));
 const PARTS = PAYLOAD.parts;
 document.getElementById('emblem').src = 'data:image/png;base64,' + PAYLOAD.emblem;
 
+/* ------------------------------------------------------------------------
+   Every table row (day rows, off/holiday note rows, and the two header
+   rows) inherits Word's document-default paragraph spacing — 200 twips
+   "after" plus 1.15x line height — because the template never overrides
+   it per row. That's invisible on a single sample row, but multiplied
+   across a full month it adds roughly 4 inches of dead space to the
+   table, pushing the sheet onto a second page. Strip it so rows pack
+   tight and a 28-31 day sheet stays on one A4 portrait page. Left alone:
+   the hand-built title/name/signature paragraphs, which already carry
+   their own tuned spacing. */
+const ROW_SPACING = '<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>';
+function tightenRowSpacing(xml){
+  return xml
+    .replace(/(<w:bidi\/>)(<w:ind )/g, `$1${ROW_SPACING}$2`)
+    .replace(/(<w:pPr>)(<w:jc )/g, `$1${ROW_SPACING}$2`);
+}
+FRAG.row     = tightenRowSpacing(FRAG.row);
+FRAG.rowNote = tightenRowSpacing(FRAG.rowNote);
+{
+  const tblStart = FRAG.block.indexOf('<w:tbl>');
+  const rowsAt   = FRAG.block.indexOf('{{ROWS}}');
+  FRAG.block = FRAG.block.slice(0, tblStart)
+    + tightenRowSpacing(FRAG.block.slice(tblStart, rowsAt))
+    + FRAG.block.slice(rowsAt);
+}
+
 /* ============================================================ calendar */
 const DV_DAYS   = ['އާދިއްތަ','ހޯމަ','އަންގާރަ','ބުދަ','ބުރާސްފަތި','ހުކުރު','ހޮނިހިރު'];
 const EN_DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
