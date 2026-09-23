@@ -42,6 +42,28 @@
   .card .dv{font-family:var(--thaana); direction:rtl; font-size:13px; color:var(--on-surface-var)}
   .card .go{margin-top:auto; font-size:13px; font-weight:500; color:var(--primary)}
   footer{text-align:center; padding:18px; font-size:12px; color:var(--on-surface-var)}
+
+  .admin{width:100%; max-width:680px; margin:0 auto 24px; padding:0 24px}
+  .admin[hidden]{display:none}
+  .admin .box{background:var(--surface); border-radius:16px; box-shadow:var(--e1); padding:20px 22px}
+  .admin h2{margin:0 0 4px; font-size:16px; font-weight:500}
+  .admin .sub{margin:0 0 16px; font-size:12.5px; color:var(--on-surface-var)}
+  .admin table{width:100%; border-collapse:collapse}
+  .admin th{text-align:left; font:500 11.5px/1 var(--latin); color:var(--on-surface-var);
+           padding:0 8px 8px; border-bottom:1px solid var(--outline-var)}
+  .admin td{padding:10px 8px; border-bottom:1px solid var(--outline-var); font-size:13.5px; vertical-align:middle}
+  .admin .badge{display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.3px;
+               color:var(--on-primary-container); background:var(--primary-container);
+               border-radius:8px; padding:2px 8px; margin-inline-start:6px}
+  .admin .sw{position:relative; display:inline-block; width:42px; height:24px}
+  .admin .sw input{position:absolute; opacity:0; width:0; height:0}
+  .admin .sw .trk{position:absolute; inset:0; background:var(--outline-var); border-radius:12px;
+                  transition:.15s; cursor:pointer}
+  .admin .sw .trk::after{content:''; position:absolute; width:18px; height:18px; left:3px; top:3px;
+                         background:#fff; border-radius:50%; transition:.15s}
+  .admin .sw input:checked + .trk{background:var(--primary)}
+  .admin .sw input:checked + .trk::after{left:21px}
+  .admin .empty{font-size:13px; color:var(--on-surface-var); padding:8px}
 </style>
 </head>
 <body>
@@ -51,26 +73,77 @@
   <p>ހާޟިރީ އަދި އިތުރުގަޑީގެ ފޯމުތައް — Maaungoodhoo Council</p>
 </header>
 
+<section class="admin" id="adminPanel" hidden>
+  <div class="box">
+    <h2>Manage users</h2>
+    <p class="sub">Turn attendance-sheet access on or off for each account. Everyone can already use their own overtime sheet.</p>
+    <table>
+      <thead><tr><th>Username</th><th>Attendance access</th></tr></thead>
+      <tbody id="userRows"></tbody>
+    </table>
+    <p class="empty" id="userEmpty" hidden>No accounts yet.</p>
+  </div>
+</section>
+
 <main>
   <div class="cards">
     <a class="card" href="attendance.html">
       <div class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10z"/></svg></div>
       <h2>Attendance sheet</h2>
       <p class="dv">ހާޟިރީ ޝީޓު ހަދާ ފޯމު</p>
-      <p>Build a monthly attendance sheet for a staff roster — rest days, public holidays, signatures, and a Word or PDF file per staff member.</p>
+      <p>Build a monthly attendance sheet for a staff roster — rest days, public holidays, signatures, and a Word or PDF file per staff member. Restricted to accounts the superadmin has granted access to.</p>
       <span class="go">Open builder →</span>
     </a>
     <a class="card" href="overtime.html">
       <div class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 10.6 4 2.3-.9 1.6L11 13V6h2v6.6z"/></svg></div>
       <h2>Overtime sheet</h2>
       <p class="dv">އިތުރުގަޑީގެ ޙާޟިރީ</p>
-      <p>Record overtime entries for one employee — times, descriptions, signatures — and print an A4 overtime sheet.</p>
+      <p>Record overtime entries for one employee — times, descriptions, signatures — and print an A4 overtime sheet. Every account has its own.</p>
       <span class="go">Open builder →</span>
     </a>
   </div>
 </main>
 
-<footer>Data is saved in your browser. Use the Save/Backup options in each tool to keep a copy of your file.</footer>
+<footer>Signed in with your own account — your overtime sheet follows you to any device.</footer>
 
+<script type="module">
+  import { requireAuth, listAllUsers, setAttendanceAccess } from './auth.js';
+
+  const { profile } = await requireAuth();
+
+  if (profile.role === 'superadmin') {
+    document.getElementById('adminPanel').hidden = false;
+    await paintUsers();
+  }
+
+  async function paintUsers() {
+    const users = await listAllUsers();
+    const rows = document.getElementById('userRows');
+    const empty = document.getElementById('userEmpty');
+    rows.textContent = '';
+    empty.hidden = users.length > 0;
+    users
+      .sort((a, b) => a.username.localeCompare(b.username))
+      .forEach(u => {
+        const tr = document.createElement('tr');
+        const isAdmin = u.role === 'superadmin';
+        tr.innerHTML = `<td>${escapeHtml(u.username)}${isAdmin ? '<span class="badge">superadmin</span>' : ''}</td>
+          <td><label class="sw"><input type="checkbox" ${isAdmin || u.attendanceAccess ? 'checked' : ''} ${isAdmin ? 'disabled' : ''}><span class="trk"></span></label></td>`;
+        if (!isAdmin) {
+          tr.querySelector('input').addEventListener('change', async (e) => {
+            e.target.disabled = true;
+            try { await setAttendanceAccess(u.uid, e.target.checked); }
+            catch (err) { e.target.checked = !e.target.checked; alert('Could not update that: ' + err.message); }
+            e.target.disabled = false;
+          });
+        }
+        rows.appendChild(tr);
+      });
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+</script>
 </body>
 </html>

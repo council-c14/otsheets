@@ -1,0 +1,67 @@
+rules_version = '2';
+
+/* ============================================================================
+   Paste this whole file into Firebase Console > Firestore Database > Rules,
+   then click Publish. This is where the real access control lives -- it
+   runs on Google's servers, so it holds even if someone bypasses the page's
+   own JavaScript entirely.
+
+   Model:
+   - users/{uid}            one doc per account: username, role, attendanceAccess
+   - overtimeRecords/{uid}  one doc per account, holding that person's own
+                            overtime sheet. Only that person can read/write it.
+   - attendanceSheet/shared one shared doc for the council attendance
+                            roster. Only the superadmin, or a user the
+                            superadmin has flagged attendanceAccess=true,
+                            can read or write it.
+   ========================================================================= */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isSuperadmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && myProfile().role == 'superadmin';
+    }
+    function hasAttendanceAccess() {
+      return isSuperadmin()
+        || (signedIn()
+            && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && myProfile().attendanceAccess == true);
+    }
+
+    match /users/{uid} {
+      // Anyone signed in can read their own profile; the superadmin can read everyone's
+      // (needed to list users on the admin panel).
+      allow read: if signedIn() && (request.auth.uid == uid || isSuperadmin());
+
+      // A user creates their own profile once, on signup, and can never grant
+      // themselves role or attendanceAccess -- only a document that doesn't
+      // exist yet may be created this way, and only as a plain "user".
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role == 'user'
+        && request.resource.data.attendanceAccess == false;
+
+      // Only the superadmin may change role or attendanceAccess on anyone's
+      // profile (including their own, e.g. to demote themselves).
+      allow update: if isSuperadmin();
+
+      allow delete: if false;
+    }
+
+    match /overtimeRecords/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /attendanceSheet/{docId} {
+      allow read, write: if hasAttendanceAccess();
+    }
+  }
+}
