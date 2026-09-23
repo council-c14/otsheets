@@ -1626,8 +1626,8 @@ function rowHTML(e) {
   const dateCls = S.meta.dateFmt === 'dvfull' ? '' : 'num';
   return '<tr>' +
     sigCell(e.sigChk) +
-    '<td class="num">' + (hol ? mm : '') + '</td><td class="num">' + (hol ? h : '') + '</td>' +
-    '<td class="num">' + (hol ? '' : mm) + '</td><td class="num">' + (hol ? '' : h) + '</td>' +
+    '<td class="num">' + (hol ? h : '') + '</td><td class="num">' + (hol ? mm : '') + '</td>' +
+    '<td class="num">' + (hol ? '' : h) + '</td><td class="num">' + (hol ? '' : mm) + '</td>' +
     sigCell(e.sigEnd) + timePair(e.endTime) +
     sigCell(e.sigStart) + timePair(e.startTime) +
     '<td class="desc">' + esc(e.desc) + '</td>' +
