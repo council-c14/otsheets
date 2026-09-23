@@ -12,6 +12,11 @@
       link, so this must be off or nobody can ever finish signing up.
    3. Project Settings (gear icon) -> Data API -> copy the "Project URL"
       and the "anon public" key into SUPABASE_URL / SUPABASE_ANON_KEY below.
+      SUPABASE_URL is just the bare project address, nothing appended --
+      e.g. "https://abcdefghijklmnop.supabase.co" and nothing after it.
+      The client library adds its own paths (/auth/v1/, /rest/v1/, ...)
+      on top of this by itself; tacking one on yourself breaks every
+      request with an "Invalid path" error.
    4. SQL Editor -> New query -> paste the contents of supabase-schema.sql
       (in this repo) -> Run. That creates the tables and the real access
       control (Row Level Security policies) -- the part that actually
@@ -28,7 +33,7 @@
    Security policies in supabase-schema.sql, which run on their database,
    not in this file. It is safe to commit.
    ========================================================================= */
-export const SUPABASE_URL = "https://pyqjvlbjbelpjymjscat.supabase.co/rest/v1/";
+export const SUPABASE_URL = "https://pyqjvlbjbelpjymjscat.supabase.co";
 export const SUPABASE_ANON_KEY = "sb_publishable_BiAjBAO_Srd5m93hTpCcjw_m7PYXusN";
 
 /** Supabase Auth needs an email-shaped identifier; usernames get this
