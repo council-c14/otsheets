@@ -442,6 +442,7 @@
         </div>
         <div class="btnset" style="margin-top:8px">
           <button class="btn text" id="formatAdd">+ Add new format</button>
+          <button class="btn text" id="formatEdit">Edit this format</button>
           <button class="btn text" id="formatUpload">Upload a Word template</button>
           <button class="btn text" id="formatDelete">Delete this format</button>
           <input type="file" id="formatUploadFile" accept=".docx" hidden>
@@ -465,7 +466,7 @@
 <div id="printSheets" aria-hidden="true"></div>
 
 <dialog id="formatDlg">
-  <h2>New sheet format</h2>
+  <h2 id="fmtDlgTitle">New sheet format</h2>
   <div class="field"><input type="text" id="fmtName" placeholder=" "><label for="fmtName">Format name</label></div>
   <div class="swatches" style="margin-top:16px; flex-direction:column; align-items:flex-start; gap:10px">
     <label><input type="checkbox" id="fmtMorning" checked> Morning time columns</label>
@@ -1441,6 +1442,7 @@ function renderFormats(){
   const uploaded = fmt.kind === 'uploaded';
   document.getElementById('genOne').disabled = uploaded;
   document.getElementById('genPdf').disabled = uploaded;
+  document.getElementById('formatEdit').disabled = uploaded;
   document.getElementById('formatHint').textContent = fmt.builtin
     ? 'The Word file always uses the council’s standard layout; this format controls the PDF/print copy.'
     : uploaded
@@ -1596,11 +1598,29 @@ document.getElementById('formatDelete').onclick = () => {
   renderFormats(); renderPreview(); save();
   toast('Format deleted');
 };
+/** null while the dialog is adding a new format; the format's id while editing one. */
+let editingFormatId = null;
+
 document.getElementById('formatAdd').onclick = () => {
+  editingFormatId = null;
+  document.getElementById('fmtDlgTitle').textContent = 'New sheet format';
+  document.getElementById('fmtSave').textContent = 'Save format';
   document.getElementById('fmtName').value = '';
   document.getElementById('fmtMorning').checked = true;
   document.getElementById('fmtEvening').checked = true;
   document.getElementById('fmtSupervisor').checked = true;
+  document.getElementById('formatDlg').showModal();
+};
+document.getElementById('formatEdit').onclick = () => {
+  const fmt = currentFormat();
+  if (fmt.kind === 'uploaded') return;
+  editingFormatId = fmt.id;
+  document.getElementById('fmtDlgTitle').textContent = `Edit “${fmt.name}”`;
+  document.getElementById('fmtSave').textContent = 'Save changes';
+  document.getElementById('fmtName').value = fmt.name;
+  document.getElementById('fmtMorning').checked = !!fmt.cols.morning;
+  document.getElementById('fmtEvening').checked = !!fmt.cols.evening;
+  document.getElementById('fmtSupervisor').checked = !!fmt.cols.supervisor;
   document.getElementById('formatDlg').showModal();
 };
 document.getElementById('fmtCancel').onclick = () => document.getElementById('formatDlg').close();
@@ -1613,12 +1633,21 @@ document.getElementById('fmtSave').onclick = () => {
     supervisor: document.getElementById('fmtSupervisor').checked,
   };
   if (!cols.morning && !cols.evening && !cols.supervisor) return toast('Keep at least one column', true);
-  const id = 'f' + Date.now().toString(36) + Math.floor(Math.random()*1e3).toString(36);
-  state.formats.push({id, name, cols});
-  state.formatId = id;
-  document.getElementById('formatDlg').close();
-  renderFormats(); renderPreview(); save();
-  toast(`“${name}” added`);
+
+  if (editingFormatId){
+    const fmt = state.formats.find(f => f.id === editingFormatId);
+    fmt.name = name; fmt.cols = cols;
+    document.getElementById('formatDlg').close();
+    renderFormats(); renderPreview(); save();
+    toast(`“${name}” updated`);
+  } else {
+    const id = 'f' + Date.now().toString(36) + Math.floor(Math.random()*1e3).toString(36);
+    state.formats.push({id, name, cols});
+    state.formatId = id;
+    document.getElementById('formatDlg').close();
+    renderFormats(); renderPreview(); save();
+    toast(`“${name}” added`);
+  }
 };
 
 document.getElementById('formatUpload').onclick = () => document.getElementById('formatUploadFile').click();

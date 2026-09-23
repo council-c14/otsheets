@@ -504,6 +504,19 @@ table.ot td.sig img{max-height:calc(var(--rowh,13mm) - 2.4mm); max-width:100%; o
         <input type="checkbox" id="mShowBismillah"><span class="track"></span>
         <span class="lbl">Print the Bismillah above the emblem<small>Uses the ﷽ ligature, so no special font is needed</small></span>
       </label>
+      <div class="tf" style="margin-top:14px; max-width:220px">
+        <label for="mBismillahSize">Bismillah size</label>
+        <select id="mBismillahSize">
+          <option value="14">14pt</option>
+          <option value="16">16pt</option>
+          <option value="18">18pt</option>
+          <option value="20">20pt (default)</option>
+          <option value="24">24pt</option>
+          <option value="28">28pt</option>
+          <option value="32">32pt</option>
+          <option value="36">36pt</option>
+        </select>
+      </div>
       <div class="subhead">Emblem</div>
       <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap">
         <div style="width:64px;height:70px;border:1px solid var(--outline-var);border-radius:var(--r-s);display:grid;place-items:center;background:#fff">
@@ -751,7 +764,7 @@ function freshState() {
   return {
     meta: {
       logo: LOGO_DEFAULT,
-      bismillah: '\uFDFD', showBismillah: true,
+      bismillah: '\uFDFD', showBismillah: true, bismillahSize: 20,
       bismillah: '﷽',
       office: 'މިލަދުންމަޑުލު އުތުރުބުރީ މާއުނގޫދޫ ކައުންސިލް އިދާރާ',
       island: 'ށ.މާއުނގޫދޫ / ދިވެހިރާއްޖެ',
@@ -1123,6 +1136,8 @@ function fillDetails() {
   qs('#mTimeCells').value = S.meta.timeCells;
   qs('#mShowBismillah').checked = !!S.meta.showBismillah;
   qs('#mBismillah').disabled = !S.meta.showBismillah;
+  qs('#mBismillahSize').value = String(S.meta.bismillahSize || 20);
+  qs('#mBismillahSize').disabled = !S.meta.showBismillah;
   qs('#mSort').checked = !!S.meta.sortByDate;
   const st = sigById(S.meta.staffSig);
   qs('#staffSigPrev').innerHTML = st ? '<img src="' + st.data + '" alt="">' : '<span>Not set</span>';
@@ -1164,6 +1179,9 @@ function bindDetails() {
   qs('#mTimeCells').addEventListener('change', e => { S.meta.timeCells = e.target.value; changed(false); });
   qs('#mShowBismillah').addEventListener('change', e => {
     S.meta.showBismillah = e.target.checked; fillDetails(); changed(false);
+  });
+  qs('#mBismillahSize').addEventListener('change', e => {
+    S.meta.bismillahSize = +e.target.value; changed(false);
   });
   qs('#mSort').addEventListener('change', e => { S.meta.sortByDate = e.target.checked; changed(true); });
 
@@ -1530,7 +1548,9 @@ function sheetHeadHTML() {
   if (m.record)   bits.push('<span>ރެކޯޑް ކާޑު ނަންބަރު: ' + esc(m.record) + '</span>');
   if (m.salary)   bits.push('<span>މުސާރަ: ' + esc(m.salary) + 'ރ</span>');
   return '<div class="sheet-head">' +
-    (m.bismillah ? '<div class="bismillah">' + esc(m.bismillah) + '</div>' : '') +
+    (m.showBismillah && m.bismillah
+      ? '<div class="bismillah" style="font-size:' + (+m.bismillahSize || 20) + 'pt">' + esc(m.bismillah) + '</div>'
+      : '') +
     (m.logo ? '<img class="emblem" src="' + m.logo + '" alt="">' : '') +
     '<div class="office">' + esc(m.office) + '</div>' +
     '<div class="island">' + esc(m.island) + '</div>' +
@@ -1588,8 +1608,8 @@ function timePair(t) {
   if (S.meta.timeFmt === '12') return '<td class="num" colspan="2">' + esc(fmtTime(t)) + '</td>';
   const mins = toMinutes(t);
   if (mins == null) return '<td class="num"></td><td class="num"></td>';
-  return '<td class="num">' + pad2(mins % 60) + '</td>' +
-         '<td class="num">' + pad2(Math.floor(mins / 60)) + '</td>';
+  return '<td class="num">' + pad2(Math.floor(mins / 60)) + '</td>' +
+         '<td class="num">' + pad2(mins % 60) + '</td>';
 }
 
 function rowHTML(e) {
