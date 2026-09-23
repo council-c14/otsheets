@@ -442,7 +442,9 @@
         </div>
         <div class="btnset" style="margin-top:8px">
           <button class="btn text" id="formatAdd">+ Add new format</button>
+          <button class="btn text" id="formatUpload">Upload a Word template</button>
           <button class="btn text" id="formatDelete">Delete this format</button>
+          <input type="file" id="formatUploadFile" accept=".docx" hidden>
         </div>
         <p class="hint" id="formatHint"></p>
 
@@ -510,6 +512,8 @@ const PAYLOAD = {"parts":{"[Content_Types].xml":{"c":"tZXLbtswEEX3/QqBW0Oi3UUQFJ
 /* ============================================================ decoding */
 const b64ToBytes = s => { const bin = atob(s); const u = new Uint8Array(bin.length);
   for (let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; };
+const bytesToB64 = u => { let bin = ''; for (let i=0;i<u.length;i++) bin += String.fromCharCode(u[i]);
+  return btoa(bin); };
 const TD = new TextDecoder(), TE = new TextEncoder();
 const FRAG  = JSON.parse(TD.decode(b64ToBytes(PAYLOAD.frag)));
 const PARTS = PAYLOAD.parts;
@@ -782,6 +786,59 @@ async function deflateRaw(u8){
     return new Uint8Array(await new Response(stream).arrayBuffer());
   } catch(e){ return null; }
 }
+/** The inverse, for reading a .docx someone uploads. */
+async function inflateRaw(u8){
+  if (typeof DecompressionStream === 'undefined') return null;
+  try {
+    const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  } catch(e){ return null; }
+}
+
+/** Minimal ZIP reader (the inverse of buildZip below): reads the central
+    directory, then each entry's own local header to find its exact data
+    offset, and inflates deflated entries. Returns {name: Uint8Array}. */
+async function readZip(bytes){
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let eocd = -1;
+  const scanFrom = Math.max(0, bytes.length - 22 - 65536);
+  for (let i = bytes.length - 22; i >= scanFrom; i--){
+    if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('That file is not a .docx (zip signature not found)');
+  const entryCount = dv.getUint16(eocd + 10, true);
+  let cdOffset = dv.getUint32(eocd + 16, true);
+  const entries = {};
+  for (let i = 0; i < entryCount; i++){
+    if (dv.getUint32(cdOffset, true) !== 0x02014b50) throw new Error('That .docx looks corrupted');
+    const method     = dv.getUint16(cdOffset + 10, true);
+    const compSize   = dv.getUint32(cdOffset + 20, true);
+    const uncompSize = dv.getUint32(cdOffset + 24, true);
+    const nameLen    = dv.getUint16(cdOffset + 28, true);
+    const extraLen   = dv.getUint16(cdOffset + 30, true);
+    const commentLen = dv.getUint16(cdOffset + 32, true);
+    const localOffset = dv.getUint32(cdOffset + 42, true);
+    const name = TD.decode(bytes.subarray(cdOffset + 46, cdOffset + 46 + nameLen));
+
+    const lNameLen  = dv.getUint16(localOffset + 26, true);
+    const lExtraLen = dv.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + lNameLen + lExtraLen;
+    const raw = bytes.subarray(dataStart, dataStart + compSize);
+
+    if (!name.endsWith('/')){
+      let data;
+      if (method === 0) data = raw.slice();
+      else if (method === 8){
+        data = await inflateRaw(raw);
+        if (!data) throw new Error('This browser cannot unpack compressed zip entries');
+      } else throw new Error(`"${name}" uses a compression method this app doesn't support`);
+      entries[name] = data;
+      void uncompSize;
+    }
+    cdOffset += 46 + nameLen + extraLen + commentLen;
+  }
+  return entries;
+}
 
 function buildZip(files){
   const now = new Date();
@@ -832,6 +889,101 @@ async function makeDocx(documentXml){
     files.push({name, data: b64ToBytes(p.c), method: 8, crc: p.crc >>> 0, size: p.u});
   }
   const raw  = TE.encode(documentXml);
+  const comp = await deflateRaw(raw);
+  files.push({name:'word/document.xml', data: comp || raw, method: comp ? 8 : 0,
+              crc: crc32(raw), size: raw.length});
+  return buildZip(files);
+}
+
+/* ============================================================ uploaded formats
+   A "format" can also be someone's own Word template: a plain .docx with
+   {{TOKEN}} placeholders, and one table row containing {{DATE}} and {{DAY}}
+   that gets cloned once per day in the period. We never re-derive its Word
+   layout — every other part of the zip (styles, fonts, media, rels) is kept
+   byte-for-byte and just repackaged, so the upload prints exactly as authored. */
+const UPLOAD_TOKENS = ['TITLE','MONTH','NAME','IDCARD','JOB','SALARY','CHK_NAME','CHK_POST','APR_NAME','APR_POST'];
+
+/** Finds the one <w:tr> holding both {{DATE}} and {{DAY}}, and splits the
+    document into "everything else" (with that row swapped for {{ROWS}})
+    plus the row's own XML, so it can be cloned once per day at build time. */
+function extractRowTemplate(xml){
+  const rowRe = /<w:tr\b[^>]*>[\s\S]*?<\/w:tr>/g;
+  let m;
+  while ((m = rowRe.exec(xml))){
+    if (m[0].includes('{{DATE}}') && m[0].includes('{{DAY}}')){
+      return {
+        rowXml: m[0],
+        documentXml: xml.slice(0, m.index) + '{{ROWS}}' + xml.slice(m.index + m[0].length)
+      };
+    }
+  }
+  return null;
+}
+
+/** Reads an uploaded .docx, validates it has what this app needs, and
+    returns a format object ready to push onto state.formats. Throws with a
+    human-readable message on anything it can't work with. */
+async function parseUploadedTemplate(file){
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const entries = await readZip(bytes);
+  if (!entries['word/document.xml'])
+    throw new Error('That doesn’t look like a Word document (no word/document.xml inside)');
+
+  const xml = TD.decode(entries['word/document.xml']);
+  const split = extractRowTemplate(xml);
+  if (!split)
+    throw new Error('Couldn’t find a table row with both {{DATE}} and {{DAY}} in it — add one row using those placeholders for the app to repeat per day');
+  if (!xml.includes('{{NAME}}'))
+    throw new Error('Add a {{NAME}} placeholder somewhere in the template — the app has nothing to print the staff member’s name into otherwise');
+
+  const rawParts = {};
+  for (const [name, data] of Object.entries(entries))
+    if (name !== 'word/document.xml') rawParts[name] = bytesToB64(data);
+
+  const missing = UPLOAD_TOKENS.filter(t => !xml.includes(`{{${t}}}`));
+  return {
+    id: 'f' + Date.now().toString(36) + Math.floor(Math.random()*1e3).toString(36),
+    name: file.name.replace(/\.docx$/i, ''),
+    kind: 'uploaded',
+    fileName: file.name,
+    documentXml: split.documentXml,
+    rowXml: split.rowXml,
+    rawParts,
+    missing,
+  };
+}
+
+/** Fills one uploaded template for one person. Unlike the built-in template
+    this only ever handles a single person — every uploaded format downloads
+    as one .docx per staff member, since we can't safely infer how an
+    arbitrary template would join several people into one file. */
+function buildUploadedDocumentXml(fmt, p){
+  const rows = printedDays().map(d => fill(fmt.rowXml, {
+    DATE: escXml(d.date), DAY: escXml(d.day), NOTE: escXml(d.skip ? d.note : '')
+  })).join('');
+  let doc = fill(fmt.documentXml, {
+    ROWS: rows,
+    TITLE: escXml(titleFor(p)), MONTH: escXml(monthLabel()),
+    NAME: escXml(p.name), IDCARD: escXml(p.id), JOB: escXml(p.job), SALARY: escXml(p.salary),
+    CHK_NAME: escXml(state.chkName), CHK_POST: escXml(state.chkPost),
+    APR_NAME: escXml(state.aprName), APR_POST: escXml(state.aprPost),
+  });
+  let id = 0x21000001;
+  doc = doc.replace(/(w14:paraId|wp14:anchorId)="[0-9A-Fa-f]{8}"/g,
+                    (m, a) => `${a}="${(id++).toString(16).toUpperCase().padStart(8,'0')}"`);
+  return doc;
+}
+
+/** Same idea as makeDocx, but for a format whose parts arrived as plain
+    (uncompressed) bytes at upload time rather than being pre-compressed. */
+async function makeDocxFromParts(rawParts, documentXml){
+  const files = [];
+  for (const [name, b64] of Object.entries(rawParts)){
+    const raw = b64ToBytes(b64);
+    const comp = await deflateRaw(raw);
+    files.push({name, data: comp || raw, method: comp ? 8 : 0, crc: crc32(raw), size: raw.length});
+  }
+  const raw = TE.encode(documentXml);
   const comp = await deflateRaw(raw);
   files.push({name:'word/document.xml', data: comp || raw, method: comp ? 8 : 0,
               crc: crc32(raw), size: raw.length});
@@ -894,6 +1046,10 @@ async function generate(mode){
   if (!people.length)      return toast('Tick at least one staff member first', true);
   if (!printedDays().length) return toast('That period has no days in it — check the dates', true);
 
+  const fmt = currentFormat();
+  if (fmt.kind === 'uploaded' && mode === 'one')
+    return toast('Uploaded templates only download as separate files, one per staff member', true);
+
   const btns = [document.getElementById('genOne'), document.getElementById('genZip')];
   const btn = btns[mode === 'one' ? 0 : 1];
   const label = btn.textContent;
@@ -901,7 +1057,17 @@ async function generate(mode){
   btn.textContent = 'Building…';
 
   try {
-    if (mode === 'one'){
+    if (fmt.kind === 'uploaded'){
+      const entries = [];
+      for (let i=0; i<people.length; i++){
+        const blob = await makeDocxFromParts(fmt.rawParts, buildUploadedDocumentXml(fmt, people[i]));
+        const data = new Uint8Array(await blob.arrayBuffer());
+        entries.push({name:`${fileLabel(people[i], i)}.docx`, data, method:0,
+                      crc: crc32(data), size: data.length});
+      }
+      download(buildZip(entries), `Haaziree ${periodTag()} sheets.zip`);
+      toast(`${people.length} files zipped, using “${fmt.name}”`);
+    } else if (mode === 'one'){
       download(await makeDocx(buildDocumentXml(people)), `Haaziree ${periodTag()}.docx`);
       toast(`One file, ${people.length} sheets`);
     } else {
@@ -921,6 +1087,7 @@ async function generate(mode){
   } finally {
     btns.forEach(b => b.disabled = false);
     btn.textContent = label;
+    renderFormats(); // re-applies the disabled state genOne/genPdf need for an uploaded format
   }
 }
 
@@ -1239,8 +1406,16 @@ function sheetHTML(p, fmt){
 }
 
 function renderPreview(){
+  const fmt = currentFormat();
+  const wrap = document.getElementById('preview');
+  if (fmt.kind === 'uploaded'){
+    wrap.innerHTML = `<p style="font-family:var(--ui); direction:ltr; text-align:center; color:var(--on-surface-variant); padding:20px">
+      No preview for an uploaded template — “${escHtml(fmt.fileName)}” keeps its own look.<br>
+      Download to check it.${fmt.missing.length ? `<br><br>Placeholders this template doesn’t use: ${fmt.missing.map(t=>'{{'+t+'}}').join(', ')}` : ''}</p>`;
+    return;
+  }
   const p = active()[0] || {name:'', id:'', job:'', salary:''};
-  document.getElementById('preview').innerHTML = sheetHTML(p, currentFormat());
+  wrap.innerHTML = sheetHTML(p, fmt);
 }
 
 /** Fills the hidden multi-page host with one sheet per person, for print/PDF. */
@@ -1257,13 +1432,20 @@ function buildPrintSheets(people, fmt){
 function renderFormats(){
   const pick = document.getElementById('formatPick');
   pick.textContent = '';
-  state.formats.forEach(f => pick.add(new Option(f.name, f.id)));
+  state.formats.forEach(f => pick.add(new Option(
+    f.kind === 'uploaded' ? `${f.name} (uploaded)` : f.name, f.id)));
   pick.value = state.formatId;
   const fmt = currentFormat();
   document.getElementById('formatDelete').disabled = !!fmt.builtin;
+
+  const uploaded = fmt.kind === 'uploaded';
+  document.getElementById('genOne').disabled = uploaded;
+  document.getElementById('genPdf').disabled = uploaded;
   document.getElementById('formatHint').textContent = fmt.builtin
     ? 'The Word file always uses the council’s standard layout; this format controls the PDF/print copy.'
-    : 'Custom format — used for the PDF/print copy only. The Word file still uses the standard layout.';
+    : uploaded
+      ? 'Your own template — downloads as one .docx per staff member (zip). No PDF preview, since the app can’t read its layout.'
+      : 'Custom format — used for the PDF/print copy only. The Word file still uses the standard layout.';
 }
 
 function paintRoster(){
@@ -1393,7 +1575,9 @@ document.getElementById('genPdf').onclick = () => {
   const people = active();
   if (!people.length)       return toast('Tick at least one staff member first', true);
   if (!printedDays().length) return toast('That period has no days in it — check the dates', true);
-  buildPrintSheets(people, currentFormat());
+  const fmt = currentFormat();
+  if (fmt.kind === 'uploaded') return toast('No PDF preview for an uploaded template — download the Word file instead', true);
+  buildPrintSheets(people, fmt);
   document.body.classList.add('printing-multi');
   const cleanup = () => { document.body.classList.remove('printing-multi'); window.removeEventListener('afterprint', cleanup); };
   window.addEventListener('afterprint', cleanup);
@@ -1435,6 +1619,29 @@ document.getElementById('fmtSave').onclick = () => {
   document.getElementById('formatDlg').close();
   renderFormats(); renderPreview(); save();
   toast(`“${name}” added`);
+};
+
+document.getElementById('formatUpload').onclick = () => document.getElementById('formatUploadFile').click();
+document.getElementById('formatUploadFile').onchange = async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const btn = document.getElementById('formatUpload');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Reading…';
+  try {
+    const fmt = await parseUploadedTemplate(file);
+    state.formats.push(fmt);
+    state.formatId = fmt.id;
+    renderFormats(); renderPreview(); save();
+    toast(fmt.missing.length
+      ? `“${fmt.name}” added — it doesn’t use: ${fmt.missing.map(t=>'{{'+t+'}}').join(', ')}`
+      : `“${fmt.name}” added`);
+  } catch(err){
+    console.error(err);
+    toast('Could not read that template — ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = label;
+    e.target.value = '';
+  }
 };
 
 /* ---- backup / restore ---- */
