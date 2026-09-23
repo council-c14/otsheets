@@ -20,10 +20,10 @@
   html,body{margin:0}
   body{background:var(--surface-1); color:var(--on-surface); font-family:var(--latin);
        min-height:100vh; display:flex; flex-direction:column}
-  header{padding:32px 24px 8px; text-align:center}
-  header h1{margin:0; font-size:22px; font-weight:500}
-  header p{margin:6px 0 0; font-size:13px; color:var(--on-surface-var); font-family:var(--thaana); direction:rtl}
-  main{flex:1; display:flex; align-items:center; justify-content:center; padding:24px}
+  header{padding:40px 24px 46px; text-align:center; background:var(--primary); color:var(--on-primary); box-shadow:var(--e2)}
+  header h1{margin:0; font-size:24px; font-weight:500; color:var(--on-primary)}
+  header p{margin:8px 0 0; font-size:13px; color:rgba(255,255,255,.85); font-family:var(--thaana); direction:rtl}
+  main{flex:1; display:flex; align-items:center; justify-content:center; padding:24px; margin-top:-26px}
   .cards{display:grid; grid-template-columns:repeat(2,minmax(220px,300px)); gap:20px; max-width:680px; width:100%}
   @media (max-width:560px){ .cards{grid-template-columns:1fr} }
   .card{
@@ -57,7 +57,7 @@
       <div class="icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14v10z"/></svg></div>
       <h2>Attendance sheet</h2>
       <p class="dv">ހާޟިރީ ޝީޓު ހަދާ ފޯމު</p>
-      <p>Build a monthly attendance sheet for a staff roster — rest days, holidays, signatures, and one Word file per staff member.</p>
+      <p>Build a monthly attendance sheet for a staff roster — rest days, public holidays, signatures, and a Word or PDF file per staff member.</p>
       <span class="go">Open builder →</span>
     </a>
     <a class="card" href="overtime.html">

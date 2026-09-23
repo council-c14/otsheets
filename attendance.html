@@ -28,11 +28,11 @@
   h1,h2,h3{font-weight:500; margin:0}
 
   /* ---------- top app bar ---------- */
-  .appbar{background:var(--surface-2); box-shadow:var(--e1); position:sticky; top:0; z-index:5}
+  .appbar{background:var(--primary); color:var(--on-primary); box-shadow:var(--e2); position:sticky; top:0; z-index:5}
   .appbar-in{max-width:1280px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; gap:16px}
-  .appbar img{width:40px; height:44px; flex:none}
-  .appbar h1{font-family:var(--thaana); direction:rtl; font-size:24px; line-height:1.9; font-weight:500}
-  .appbar p{margin:0; font-size:12px; color:var(--on-surface-variant); letter-spacing:.03em}
+  .appbar img{width:40px; height:44px; flex:none; background:#fff; border-radius:50%; padding:3px; box-sizing:border-box}
+  .appbar h1{font-family:var(--thaana); direction:rtl; font-size:24px; line-height:1.9; font-weight:500; color:var(--on-primary)}
+  .appbar p{margin:0; font-size:12px; color:rgba(255,255,255,.82); letter-spacing:.03em}
 
   /* ---------- layout ---------- */
   main{max-width:1280px; margin:0 auto; padding:24px}
@@ -257,15 +257,51 @@
     .appbar img{width:34px;height:37px}
     .card-body{padding:12px 14px 18px}
   }
-  @media print{ body{background:#fff} .appbar,.card > h2,.card-body,.btnset{display:none} }
+  @media print{
+    body{background:#fff}
+    .appbar,.card > h2,.card-body,.btnset,.sheetwrap{display:none}
+  }
+  #printSheets{display:none}
+  body.printing-multi .sheetwrap{display:none}
+  @media print{
+    body.printing-multi #printSheets{display:block !important}
+    #printSheets .sheet{box-shadow:none; margin:0 auto; page-break-after:always}
+    #printSheets .sheet:last-child{page-break-after:auto}
+    @page{size:A4 portrait; margin:12mm 10mm}
+  }
 
   /* ---------- app switcher ---------- */
   .appswitch{display:flex; gap:6px; margin-inline-start:auto; flex-wrap:wrap}
   .appswitch a{font:500 12.5px/1 var(--ui); padding:8px 14px; border-radius:16px; text-decoration:none;
-              color:var(--on-surface-variant); border:1px solid var(--outline-variant); white-space:nowrap}
-  .appswitch a:hover{background:var(--surface-3)}
-  .appswitch a.active{background:var(--primary); color:var(--on-primary); border-color:transparent}
+              color:rgba(255,255,255,.88); border:1px solid rgba(255,255,255,.4); white-space:nowrap}
+  .appswitch a:hover{background:rgba(255,255,255,.14)}
+  .appswitch a.active{background:var(--on-primary); color:var(--primary); border-color:transparent}
   @media (max-width:700px){ .appswitch{width:100%; order:3} }
+
+  /* ---------- weekday dropdown (multi-select) ---------- */
+  .menufield{position:relative}
+  .menufield .fieldbtn{
+    width:100%; height:48px; padding:0 36px 0 14px; font:inherit; font-size:15px; text-align:left;
+    color:var(--on-surface); background:transparent; border:1px solid var(--outline); border-radius:4px;
+    cursor:pointer;
+  }
+  .menufield .fieldbtn:hover{border-color:var(--on-surface)}
+  .menufield[data-open="true"] .fieldbtn{border:2px solid var(--primary); padding:0 35px 0 13px}
+  .menufield[data-open="true"] .caret{border-top-color:var(--primary)}
+  .menufield .menu{
+    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:6;
+    background:var(--surface-1); border-radius:8px; box-shadow:var(--e2); box-sizing:border-box;
+    padding:6px; max-height:230px; overflow-y:auto;
+  }
+  /* .field label is styled as a floating field label (position:absolute,
+     pointer-events:none) elsewhere in this file; these are plain checklist
+     rows nested in a .field, so every inherited positioning property needs
+     an explicit reset here or the rows collapse on top of each other. */
+  .menufield .menu label{position:static; display:flex; align-items:center; gap:10px;
+                         padding:9px 10px; border-radius:6px; font-size:14px; cursor:pointer;
+                         color:var(--on-surface); background:none; pointer-events:auto; max-width:none}
+  .menufield .menu label:hover{background:var(--surface-3)}
+  .menufield .menu input{width:18px; height:18px; accent-color:var(--primary); cursor:pointer; flex:none}
 </style>
 </head>
 <body>
@@ -307,8 +343,13 @@
     <section class="card">
       <h2>Days off <span class="meta">printed with a note, no time boxes</span></h2>
       <div class="card-body">
-        <p class="hint" style="margin:0 0 10px">Weekly rest days</p>
-        <div class="chipset week" id="days"></div>
+        <p class="hint" style="margin:0 0 10px">Weekly rest days <span class="meta">excluded every week</span></p>
+        <div class="field float menufield" id="weekdayField">
+          <button type="button" class="fieldbtn" id="weekdayBtn" aria-haspopup="listbox" aria-expanded="false"></button>
+          <span class="caret"></span>
+          <label>Days off each week</label>
+          <div class="menu" id="weekdayMenu" role="listbox" aria-multiselectable="true" hidden></div>
+        </div>
         <div class="field"><input type="text" id="offNote" class="dv" placeholder=" ">
           <label for="offNote">Wording printed on a rest day</label></div>
         <div class="swatches">
@@ -395,9 +436,20 @@
     <section class="card">
       <h2>Word sheets <span class="meta">one page per staff member</span></h2>
       <div class="card-body">
-        <div class="btnset">
+        <div class="field float">
+          <select id="formatPick"></select><span class="caret"></span>
+          <label for="formatPick">Sheet format</label>
+        </div>
+        <div class="btnset" style="margin-top:8px">
+          <button class="btn text" id="formatAdd">+ Add new format</button>
+          <button class="btn text" id="formatDelete">Delete this format</button>
+        </div>
+        <p class="hint" id="formatHint"></p>
+
+        <div class="btnset" style="margin-top:18px">
           <button class="btn filled" id="genOne">Download one Word file</button>
           <button class="btn outlined" id="genZip">Download separate files (.zip)</button>
+          <button class="btn tonal" id="genPdf">Download PDF</button>
         </div>
         <p class="hint" id="fileHint"></p>
       </div>
@@ -407,6 +459,23 @@
 
 </div>
 </main>
+
+<div id="printSheets" aria-hidden="true"></div>
+
+<dialog id="formatDlg">
+  <h2>New sheet format</h2>
+  <div class="field"><input type="text" id="fmtName" placeholder=" "><label for="fmtName">Format name</label></div>
+  <div class="swatches" style="margin-top:16px; flex-direction:column; align-items:flex-start; gap:10px">
+    <label><input type="checkbox" id="fmtMorning" checked> Morning time columns</label>
+    <label><input type="checkbox" id="fmtEvening" checked> Evening time columns</label>
+    <label><input type="checkbox" id="fmtSupervisor" checked> Supervisor signature column</label>
+  </div>
+  <p class="hint">Formats control the PDF / print copy. The Word file always follows the council's standard layout.</p>
+  <div class="dlgfoot">
+    <button class="btn text" id="fmtCancel">Cancel</button>
+    <button class="btn filled" id="fmtSave">Save format</button>
+  </div>
+</dialog>
 
 <dialog id="importDlg">
   <h2>Paste staff rows from Excel</h2>
@@ -590,6 +659,11 @@ const DEFAULTS = () => {
       {name:'އަޙްމަދު ޒިނާން',    post:'އެސިސްޓެންޓް ކައުންސިލް އެގްޒެކެޓިވް'},
       {name:'މުޙައްމަދު އިދުހާސް', post:'ސެކްރަޓަރީ ޖެނެރަލް'},
     ],
+    formats:[
+      {id:'standard', name:'Standard (council grid)', builtin:true,
+       cols:{morning:true, evening:true, supervisor:true}},
+    ],
+    formatId:'standard',
     staff: PAYLOAD.staff.map(s => ({...s, on:true, group:'sweepers'}))
   };
 };
@@ -606,6 +680,8 @@ migrate();
 function migrate(){
   if (!Array.isArray(state.groups) || !state.groups.length) state.groups = DEFAULTS().groups;
   if (!Array.isArray(state.signatories)) state.signatories = DEFAULTS().signatories;
+  if (!Array.isArray(state.formats) || !state.formats.length) state.formats = DEFAULTS().formats;
+  if (!state.formats.some(f => f.id === state.formatId)) state.formatId = state.formats[0].id;
   // a group title is an override; one that merely repeats the global title
   // would silently swallow edits made in Sheet setup. Earlier builds shipped
   // Sweepers with the default title baked in, so clear that too.
@@ -1003,21 +1079,45 @@ const removeStaff = p => {
   renderRoster(); commit(false);
 };
 
-function renderDayChips(){
-  const wrap = document.getElementById('days');
-  wrap.textContent = '';
-  for (let i=0; i<7; i++){
-    const b = el('button', 'chip', EN_DAYS[i]);
-    b.type = 'button';
-    b.setAttribute('aria-pressed', state.skip.includes(i));
-    b.title = state.skip.includes(i) ? `${EN_DAYS[i]} is left off` : `Leave ${EN_DAYS[i]} off`;
-    b.onclick = () => {
-      state.skip = state.skip.includes(i) ? state.skip.filter(x => x!==i) : [...state.skip, i];
-      renderDayChips(); renderDays(); renderPreview(); save();
-    };
-    wrap.appendChild(b);
-  }
+function paintWeekdayBtn(){
+  const days = [0,1,2,3,4,5,6].filter(i => state.skip.includes(i)).map(i => EN_DAYS[i]);
+  document.getElementById('weekdayBtn').textContent = days.length ? days.join(', ') : 'None';
 }
+function renderWeekdayMenu(){
+  const menu = document.getElementById('weekdayMenu');
+  menu.textContent = '';
+  for (let i=0; i<7; i++){
+    const row = el('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = state.skip.includes(i);
+    cb.setAttribute('role', 'option');
+    cb.onchange = () => {
+      state.skip = cb.checked ? [...state.skip, i] : state.skip.filter(x => x!==i);
+      paintWeekdayBtn(); renderDays(); renderPreview(); save();
+    };
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(`${EN_DAYS[i]}`));
+    menu.appendChild(row);
+  }
+  paintWeekdayBtn();
+}
+function setWeekdayMenuOpen(open){
+  document.getElementById('weekdayMenu').hidden = !open;
+  document.getElementById('weekdayField').dataset.open = String(open);
+  document.getElementById('weekdayBtn').setAttribute('aria-expanded', String(open));
+}
+document.getElementById('weekdayBtn').onclick = e => {
+  e.stopPropagation();
+  setWeekdayMenuOpen(document.getElementById('weekdayMenu').hidden);
+};
+document.addEventListener('click', e => {
+  const field = document.getElementById('weekdayField');
+  if (!field.contains(e.target)) setWeekdayMenuOpen(false);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') setWeekdayMenuOpen(false);
+});
 
 function renderHolidays(){
   const pick = document.getElementById('holidayPick');
@@ -1101,15 +1201,23 @@ function renderDays(){
     : `${all[0].date} to ${all.at(-1).date} — ${all.length} rows on the sheet.`;
 }
 
-function renderPreview(){
-  const p = active()[0] || {name:'', id:'', job:'', salary:''};
+const currentFormat = () => state.formats.find(f => f.id === state.formatId) || state.formats[0];
+
+/** HTML for one staff member's sheet, following the given format's column set.
+    Shared by the on-screen preview and the multi-page PDF/print build. */
+function sheetHTML(p, fmt){
   const days = printedDays();
-  const blanks = '<td></td>'.repeat(7);
-  document.getElementById('preview').innerHTML = `
+  const cols = fmt.cols;
+  const groups = [];
+  if (cols.morning) groups.push({label:'ހެނދުނު', sub:['ފެށި ގަޑި','ނިމުނު ގަޑި','ސޮއި']});
+  if (cols.evening) groups.push({label:'ހަވީރު',   sub:['ފެށި ގަޑި','ނިމުނު ގަޑި','ސޮއި']});
+  const dataCols = groups.reduce((n,g) => n+g.sub.length, 0) + (cols.supervisor ? 1 : 0);
+  const blanks = '<td></td>'.repeat(dataCols);
+  return `
     <img class="emb" src="data:image/png;base64,${PAYLOAD.emblem}" alt="">
     <div class="org">މިލަދުންމަޑުލުއުތުރުބުރީ މާއުނގޫދޫ ކައުންސިލްގެ އިދާރާ<br>ށ. މާއުނގޫދޫ، ދިވެހިރާއްޖެ</div>
     <hr>
-    <div class="title">${escHtml(active()[0] ? titleFor(active()[0]) : state.title)}</div>
+    <div class="title">${escHtml(p ? titleFor(p) : state.title)}</div>
     <div class="mon">${escHtml(monthLabel())}</div>
     <div class="meta"><span>މުވައްޒަފުގެ ނަން: ${escHtml(p.name)}</span>
       <span>އައި.ޑީ. ކާޑު ނަންބަރު: <span class="ltr">${escHtml(p.id)}</span></span></div>
@@ -1117,17 +1225,45 @@ function renderPreview(){
       <span>އަސާސީ މުސާރަ: ${escHtml(p.salary)}</span></div>
     <table>
       <tr><th rowspan="2">ތާރީޚް</th><th rowspan="2">ދުވަސް</th>
-          <th colspan="3">ހެނދުނު</th><th colspan="3">ހަވީރު</th><th rowspan="2">ސުޕަވައިޒަރ ސޮއި</th></tr>
-      <tr><th>ފެށި ގަޑި</th><th>ނިމުނު ގަޑި</th><th>ސޮއި</th>
-          <th>ފެށި ގަޑި</th><th>ނިމުނު ގަޑި</th><th>ސޮއި</th></tr>
+          ${groups.map(g => `<th colspan="${g.sub.length}">${g.label}</th>`).join('')}
+          ${cols.supervisor ? '<th rowspan="2">ސުޕަވައިޒަރ ސޮއި</th>' : ''}</tr>
+      <tr>${groups.map(g => g.sub.map(s => `<th>${s}</th>`).join('')).join('')}</tr>
       ${days.map(d => `<tr${d.skip ? ` style="background:${d.kind === 'hol' ? state.holShade : state.restShade}"` : ''}><td class="d">${d.date}</td><td>${d.day}</td>` +
-          (d.skip ? `<td colspan="6" class="note">${escHtml(d.note)}</td><td></td>` : blanks) +
+          (d.skip ? `<td colspan="${dataCols || 1}" class="note">${escHtml(d.note)}</td>` : blanks) +
         `</tr>`).join('')}
     </table>
     <div class="sig"><span><u>ކައުންސިލްގެ އިދާރާއިން ޝީޓު ޗެކްކުރެވި:</u><br>ސޮއި:<br>
         ނަން: ${escHtml(state.chkName)}<br>މަޤާމު: ${escHtml(state.chkPost)}</span>
       <span><u>ހުއްދަދެއްވި:</u><br>ސޮއި:<br>
         ނަން: ${escHtml(state.aprName)}<br>މަޤާމު: ${escHtml(state.aprPost)}</span></div>`;
+}
+
+function renderPreview(){
+  const p = active()[0] || {name:'', id:'', job:'', salary:''};
+  document.getElementById('preview').innerHTML = sheetHTML(p, currentFormat());
+}
+
+/** Fills the hidden multi-page host with one sheet per person, for print/PDF. */
+function buildPrintSheets(people, fmt){
+  const host = document.getElementById('printSheets');
+  host.textContent = '';
+  people.forEach(p => {
+    const page = el('div', 'sheet');
+    page.innerHTML = sheetHTML(p, fmt);
+    host.appendChild(page);
+  });
+}
+
+function renderFormats(){
+  const pick = document.getElementById('formatPick');
+  pick.textContent = '';
+  state.formats.forEach(f => pick.add(new Option(f.name, f.id)));
+  pick.value = state.formatId;
+  const fmt = currentFormat();
+  document.getElementById('formatDelete').disabled = !!fmt.builtin;
+  document.getElementById('formatHint').textContent = fmt.builtin
+    ? 'The Word file always uses the council’s standard layout; this format controls the PDF/print copy.'
+    : 'Custom format — used for the PDF/print copy only. The Word file still uses the standard layout.';
 }
 
 function paintRoster(){
@@ -1152,8 +1288,8 @@ function paintMonthHint(){
     : `Left empty it follows the last day, so the sheets will say “${monthLabel()}”.`;
 }
 const refreshDays = () => { renderHolidays(); renderDays(); renderPreview(); };
-function renderAll(){ renderRoster(); renderDayChips(); refreshDays(); paintMonthHint(); paintRoster();
-                      paintSignatory('chk'); paintSignatory('apr'); }
+function renderAll(){ renderRoster(); renderWeekdayMenu(); refreshDays(); paintMonthHint(); paintRoster();
+                      paintSignatory('chk'); paintSignatory('apr'); renderFormats(); }
 function commit(full = true){
   if (full) renderRoster();
   paintStaffCount(); renderPreview(); save();
@@ -1252,6 +1388,55 @@ document.getElementById('addGroup').onclick = () => {
 document.getElementById('genOne').onclick = () => generate('one');
 document.getElementById('genZip').onclick = () => generate('zip');
 
+/* ---- PDF, via the browser's own print-to-PDF ---- */
+document.getElementById('genPdf').onclick = () => {
+  const people = active();
+  if (!people.length)       return toast('Tick at least one staff member first', true);
+  if (!printedDays().length) return toast('That period has no days in it — check the dates', true);
+  buildPrintSheets(people, currentFormat());
+  document.body.classList.add('printing-multi');
+  const cleanup = () => { document.body.classList.remove('printing-multi'); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  toast(`Opening the print dialog for ${people.length} sheet${people.length===1?'':'s'} — choose “Save as PDF”`);
+  setTimeout(() => window.print(), 60);
+};
+
+/* ---- sheet formats ---- */
+document.getElementById('formatPick').onchange = e => {
+  state.formatId = e.target.value; renderFormats(); renderPreview(); save();
+};
+document.getElementById('formatDelete').onclick = () => {
+  if (currentFormat().builtin) return;
+  state.formats = state.formats.filter(f => f.id !== state.formatId);
+  state.formatId = state.formats[0].id;
+  renderFormats(); renderPreview(); save();
+  toast('Format deleted');
+};
+document.getElementById('formatAdd').onclick = () => {
+  document.getElementById('fmtName').value = '';
+  document.getElementById('fmtMorning').checked = true;
+  document.getElementById('fmtEvening').checked = true;
+  document.getElementById('fmtSupervisor').checked = true;
+  document.getElementById('formatDlg').showModal();
+};
+document.getElementById('fmtCancel').onclick = () => document.getElementById('formatDlg').close();
+document.getElementById('fmtSave').onclick = () => {
+  const name = document.getElementById('fmtName').value.trim();
+  if (!name) return toast('Give the format a name', true);
+  const cols = {
+    morning: document.getElementById('fmtMorning').checked,
+    evening: document.getElementById('fmtEvening').checked,
+    supervisor: document.getElementById('fmtSupervisor').checked,
+  };
+  if (!cols.morning && !cols.evening && !cols.supervisor) return toast('Keep at least one column', true);
+  const id = 'f' + Date.now().toString(36) + Math.floor(Math.random()*1e3).toString(36);
+  state.formats.push({id, name, cols});
+  state.formatId = id;
+  document.getElementById('formatDlg').close();
+  renderFormats(); renderPreview(); save();
+  toast(`“${name}” added`);
+};
+
 /* ---- backup / restore ---- */
 document.getElementById('backup').onclick = () => {
   download(new Blob([JSON.stringify(state, null, 2)], {type:'application/json'}),
@@ -1267,6 +1452,8 @@ document.getElementById('restoreFile').onchange = async e => {
     state = {...DEFAULTS(), ...data};
     if (!Array.isArray(state.holidays)) state.holidays = [];
     if (!Array.isArray(state.signatories)) state.signatories = DEFAULTS().signatories;
+    if (!Array.isArray(state.formats) || !state.formats.length) state.formats = DEFAULTS().formats;
+    if (!state.formats.some(f => f.id === state.formatId)) state.formatId = state.formats[0].id;
     ['title','month','offNote','restShade','holShade','chkName','chkPost','aprName','aprPost','from','to']
       .forEach(k => document.getElementById(k).value = state[k]);
     renderAll(); save();
