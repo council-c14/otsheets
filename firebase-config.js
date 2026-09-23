@@ -29,7 +29,7 @@ export const FIREBASE_CONFIG = {
   projectId: "otsheets",
   storageBucket: "otsheets.firebasestorage.app",
   messagingSenderId: "1:321762462486:web:99dd81f8d73997e3485e37",
-  appId: "G-NX5Y52KQN7",
+  appId: "1:321762462486:web:99dd81f8d73997e3485e37",
 };
 
 /** Firebase Auth needs an email-shaped identifier; usernames get this
