@@ -28,8 +28,8 @@
    Security policies in supabase-schema.sql, which run on their database,
    not in this file. It is safe to commit.
    ========================================================================= */
-export const SUPABASE_URL = "PASTE_ME";
-export const SUPABASE_ANON_KEY = "PASTE_ME";
+export const SUPABASE_URL = "http://localhost:3000/oauth/consent";
+export const SUPABASE_ANON_KEY = "pyqjvlbjbelpjymjscat";
 
 /** Supabase Auth needs an email-shaped identifier; usernames get this
     suffix appended under the hood so people never have to think about it. */
