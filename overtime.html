@@ -663,7 +663,7 @@ table.ot td.sig img{max-height:calc(var(--rowh,13mm) - 2.4mm); max-width:100%; o
 <input type="file" id="fileLogo" accept="image/*" hidden>
 
 <script type="module">
-import { requireAuth, doc, getDoc, setDoc, db } from './auth.js';
+import { requireAuth, getOvertimeRecord, saveOvertimeRecord } from './auth.js';
 const LOGO_DEFAULT = "data:image/png;base64,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";
 
 /* ===================================================================
@@ -673,10 +673,9 @@ const LOGO_DEFAULT = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMoAAADcCAYA
 (async function () {
 'use strict';
 
-/* Every account gets its own overtime sheet, saved to their own Firestore
-   record -- see firebase-config.js / firestore.rules for setup. */
+/* Every account gets its own overtime sheet, saved to their own Supabase
+   row -- see supabase-config.js / supabase-schema.sql for setup. */
 const { user: __user } = await requireAuth();
-const OT_DOC = doc(db, 'overtimeRecords', __user.uid);
 
 /* ------------------------------ constants ------------------------------ */
 const DV_MONTHS = ['ޖެނުއަރީ','ފެބްރުއަރީ','މާރިޗު','އޭޕްރިލް','މެއި','ޖޫން',
@@ -847,23 +846,18 @@ function setStaffSignature(id) {
 }
 
 /* ------------------------------ persistence ------------------------------
-   Each account's overtime sheet lives in its own Firestore record, so it
+   Each account's overtime sheet lives in its own Supabase row, so it
    follows them to any device, instead of the old window.storage hook
    (which only exists in some embedding hosts, not a plain browser tab). */
 let saveTimer = null;
 function autosave() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    setDoc(OT_DOC, { data: JSON.stringify(S), savedAt: Date.now() }).catch(() => {});
-  }, 700);
+  saveTimer = setTimeout(() => { saveOvertimeRecord(__user.id, S); }, 700);
 }
 async function restore() {
   try {
-    const snap = await getDoc(OT_DOC);
-    if (snap.exists() && snap.data().data) {
-      const data = JSON.parse(snap.data().data);
-      if (data && data.meta) { adopt(data); return true; }
-    }
+    const data = await getOvertimeRecord(__user.id);
+    if (data && data.meta) { adopt(data); return true; }
   } catch (_) {}
   return false;
 }

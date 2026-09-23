@@ -1,39 +1,24 @@
 /* ============================================================================
-   Shared login/signup gate + Firestore helpers, used by index.html,
-   attendance.html and overtime.html. See firebase-config.js for setup and
-   firestore.rules for where the real access control is enforced.
+   Shared login/signup gate + Supabase helpers, used by index.html,
+   attendance.html and overtime.html. See supabase-config.js for setup and
+   supabase-schema.sql for where the real access control is enforced.
    ========================================================================= */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import {
-  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  onAuthStateChanged, signOut,
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,
-  collection, getDocs, serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-import { FIREBASE_CONFIG, USERNAME_DOMAIN } from "./firebase-config.js";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, USERNAME_DOMAIN } from './supabase-config.js';
 
-const NOT_CONFIGURED = Object.values(FIREBASE_CONFIG).some(v => String(v).includes('PASTE_ME'));
+const NOT_CONFIGURED = [SUPABASE_URL, SUPABASE_ANON_KEY].some(v => String(v).includes('PASTE_ME'));
 
-let app, auth, db;
-if (!NOT_CONFIGURED) {
-  app = initializeApp(FIREBASE_CONFIG);
-  auth = getAuth(app);
-  db = getFirestore(app);
-}
-export { auth, db };
+export const supabase = NOT_CONFIGURED ? null : createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const emailFor = username => `${username.trim().toLowerCase().replace(/\s+/g, '')}@${USERNAME_DOMAIN}`;
 
 function friendlyAuthError(e) {
-  const code = e && e.code || '';
-  if (code.includes('invalid-credential') || code.includes('user-not-found') || code.includes('wrong-password'))
-    return 'Wrong username or password';
-  if (code.includes('email-already-in-use')) return 'That username is already taken';
-  if (code.includes('weak-password')) return 'Password needs at least 6 characters';
-  if (code.includes('invalid-email')) return 'Usernames can only use letters, numbers, dots, dashes and underscores';
-  return e.message || 'Something went wrong';
+  const msg = (e && e.message || '').toLowerCase();
+  if (msg.includes('invalid login credentials')) return 'Wrong username or password';
+  if (msg.includes('already registered') || msg.includes('already exists')) return 'That username is already taken';
+  if (msg.includes('password') && msg.includes('character')) return 'Password needs at least 6 characters';
+  if (msg.includes('duplicate key') && msg.includes('username')) return 'That username is already taken';
+  return (e && e.message) || 'Something went wrong';
 }
 
 export async function signUp(username, password) {
@@ -41,40 +26,76 @@ export async function signUp(username, password) {
   if (!/^[a-zA-Z0-9._-]{3,32}$/.test(username))
     throw new Error('Username needs to be 3-32 characters: letters, numbers, dots, dashes or underscores');
   if ((password || '').length < 6) throw new Error('Password needs at least 6 characters');
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, emailFor(username), password);
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      username, role: 'user', attendanceAccess: false, createdAt: serverTimestamp(),
-    });
-    return cred.user;
-  } catch (e) { throw new Error(friendlyAuthError(e)); }
+  const { data, error } = await supabase.auth.signUp({ email: emailFor(username), password });
+  if (error) throw new Error(friendlyAuthError(error));
+  if (!data.session)
+    throw new Error('Signup needs "Confirm email" turned off in the Supabase project (see supabase-config.js)');
+  const { error: profileErr } = await supabase.from('profiles')
+    .insert({ id: data.user.id, username, role: 'user', attendance_access: false });
+  if (profileErr) throw new Error(friendlyAuthError(profileErr));
+  return data.user;
 }
 
 export async function logIn(username, password) {
   username = (username || '').trim();
   if (!username) throw new Error('Enter your username');
-  try {
-    const cred = await signInWithEmailAndPassword(auth, emailFor(username), password);
-    return cred.user;
-  } catch (e) { throw new Error(friendlyAuthError(e)); }
+  const { data, error } = await supabase.auth.signInWithPassword({ email: emailFor(username), password });
+  if (error) throw new Error(friendlyAuthError(error));
+  return data.user;
 }
 
-export function logOut() { return signOut(auth); }
+export function logOut() { return supabase.auth.signOut(); }
 
 export async function getMyProfile(uid) {
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? snap.data() : null;
+  const { data } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
+  return data ? { uid: data.id, username: data.username, role: data.role, attendanceAccess: data.attendance_access } : null;
 }
 
 /** Superadmin-only: every account on file. */
 export async function listAllUsers() {
-  const snap = await getDocs(collection(db, 'users'));
-  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  const { data, error } = await supabase.from('profiles').select('*');
+  if (error) throw new Error(friendlyAuthError(error));
+  return (data || []).map(u => ({ uid: u.id, username: u.username, role: u.role, attendanceAccess: u.attendance_access }));
 }
 
 /** Superadmin-only: grant or revoke attendance-sheet access for one user. */
-export function setAttendanceAccess(uid, allowed) {
-  return updateDoc(doc(db, 'users', uid), { attendanceAccess: !!allowed });
+export async function setAttendanceAccess(uid, allowed) {
+  const { error } = await supabase.from('profiles').update({ attendance_access: !!allowed }).eq('id', uid);
+  if (error) throw new Error(friendlyAuthError(error));
+}
+
+/* ------------------------------------------------------------------------
+   Per-user overtime sheet (overtime_records) and the shared attendance
+   roster (attendance_sheet) -- both stored as plain jsonb, so callers just
+   hand over/receive a normal JS object. */
+export async function getOvertimeRecord(uid) {
+  const { data } = await supabase.from('overtime_records').select('data').eq('user_id', uid).maybeSingle();
+  return data ? data.data : null;
+}
+export async function saveOvertimeRecord(uid, obj) {
+  const { error } = await supabase.from('overtime_records')
+    .upsert({ user_id: uid, data: obj, saved_at: new Date().toISOString() });
+  if (error) console.error('Could not save the overtime sheet', error);
+}
+
+export async function getAttendanceSheet() {
+  const { data } = await supabase.from('attendance_sheet').select('data').eq('id', 'shared').maybeSingle();
+  return data ? data.data : null;
+}
+export async function saveAttendanceSheet(obj, savedByUsername) {
+  const { error } = await supabase.from('attendance_sheet')
+    .upsert({ id: 'shared', data: obj, saved_by: savedByUsername, saved_at: new Date().toISOString() });
+  if (error) console.error('Could not sync the attendance sheet', error);
+}
+/** Calls back with the current data immediately, then again on every
+    change anyone else with access makes. Returns an unsubscribe function. */
+export function watchAttendanceSheet(cb) {
+  getAttendanceSheet().then(data => { if (data) cb(data); });
+  const channel = supabase.channel('attendance-sheet-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_sheet', filter: 'id=eq.shared' },
+        payload => { if (payload.new && payload.new.data) cb(payload.new.data); })
+    .subscribe();
+  return () => supabase.removeChannel(channel);
 }
 
 /* ------------------------------------------------------------------------
@@ -131,8 +152,8 @@ export function requireAuth() {
       const div = document.createElement('div');
       div.id = 'authGate';
       div.innerHTML = `<div class="card"><h1>Almost there</h1>
-        <p class="sub">This site needs a Firebase project connected before anyone can sign in.</p>
-        <div class="setup">Open <code>firebase-config.js</code> in the repo and follow the setup
+        <p class="sub">This site needs a Supabase project connected before anyone can sign in.</p>
+        <div class="setup">Open <code>supabase-config.js</code> in the repo and follow the setup
         steps at the top of that file, then reload this page.</div></div>`;
       document.body.appendChild(div);
       return; // never resolves -- nothing works until it's configured
@@ -144,18 +165,25 @@ export function requireAuth() {
     document.body.appendChild(div);
     wireGate(div);
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (!document.getElementById('authGate')) location.reload(); return; }
-      let profile = await getMyProfile(user.uid);
-      if (!profile) { // shouldn't normally happen, but don't strand a signed-in user with no doc
-        await setDoc(doc(db, 'users', user.uid), {
-          username: user.email.split('@')[0], role: 'user', attendanceAccess: false, createdAt: serverTimestamp(),
-        });
-        profile = await getMyProfile(user.uid);
+    let settled = false;
+    const finish = async (user) => {
+      if (settled || !user) return;
+      settled = true;
+      let profile = await getMyProfile(user.id);
+      if (!profile) { // shouldn't normally happen, but don't strand a signed-in user with no row
+        const username = (user.email || '').split('@')[0];
+        await supabase.from('profiles').insert({ id: user.id, username, role: 'user', attendance_access: false });
+        profile = await getMyProfile(user.id);
       }
       document.getElementById('authGate')?.remove();
       addAccountChip(profile);
       resolve({ user, profile });
+    };
+
+    supabase.auth.getSession().then(({ data }) => finish(data.session && data.session.user));
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') { location.reload(); return; }
+      finish(session && session.user);
     });
   });
 }
@@ -192,7 +220,7 @@ function wireGate(div) {
     go.textContent = mode === 'login' ? 'Signing in…' : 'Creating…';
     try {
       if (mode === 'login') await logIn(user, pass); else await signUp(user, pass);
-      // onAuthStateChanged above takes it from here
+      // requireAuth's onAuthStateChange/getSession takes it from here
     } catch (e2) {
       err.textContent = e2.message;
       go.disabled = false;
@@ -215,5 +243,3 @@ function addAccountChip(profile) {
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-
-export { onSnapshot, doc, getDoc, setDoc, updateDoc, collection, getDocs, serverTimestamp };
