@@ -29,7 +29,7 @@
    not in this file. It is safe to commit.
    ========================================================================= */
 export const SUPABASE_URL = "http://localhost:3000/oauth/consent";
-export const SUPABASE_ANON_KEY = "pyqjvlbjbelpjymjscat";
+export const SUPABASE_ANON_KEY = "sb_publishable_BiAjBAO_Srd5m93hTpCcjw_m7PYXusN";
 
 /** Supabase Auth needs an email-shaped identifier; usernames get this
     suffix appended under the hood so people never have to think about it. */
