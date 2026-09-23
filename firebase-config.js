@@ -24,12 +24,12 @@
    firestore.rules, which run on Google's servers, not in this file. It is
    safe to commit. ========================================================= */
 export const FIREBASE_CONFIG = {
-  apiKey: "PASTE_ME",
-  authDomain: "PASTE_ME.firebaseapp.com",
-  projectId: "PASTE_ME",
-  storageBucket: "PASTE_ME.appspot.com",
-  messagingSenderId: "PASTE_ME",
-  appId: "PASTE_ME",
+  apiKey: "AIzaSyBZsK5vpGEnB7AWe4PI4zMcQA8aWimdeAo",
+  authDomain: "otsheets.firebaseapp.com",
+  projectId: "otsheets",
+  storageBucket: "otsheets.firebasestorage.app",
+  messagingSenderId: "1:321762462486:web:99dd81f8d73997e3485e37",
+  appId: "G-NX5Y52KQN7",
 };
 
 /** Firebase Auth needs an email-shaped identifier; usernames get this
