@@ -217,6 +217,14 @@ main{max-width:1180px; margin:0 auto; padding:20px 16px 120px}
 }
 .sig-card .meta input:hover{border-bottom-color:var(--outline-var)}
 .sig-card .meta input:focus{outline:none; border-bottom-color:var(--primary)}
+
+/* ============================== history ============================== */
+.hist-label{
+  flex:1 1 220px; min-width:120px; border:none; background:transparent; font:inherit;
+  font-size:15px; font-weight:500; padding:4px 2px; border-bottom:1px solid transparent; color:var(--on-surface);
+}
+.hist-label:hover{border-bottom-color:var(--outline-var)}
+.hist-label:focus{outline:none; border-bottom-color:var(--primary)}
 .empty{
   border:1px dashed var(--outline-var); border-radius:var(--r-m); padding:36px 20px;
   text-align:center; color:var(--on-surface-var); background:var(--surface);
@@ -422,6 +430,9 @@ table.ot td.sig img{max-height:calc(var(--rowh,13mm) - 2.4mm); max-width:100%; o
     <button class="tab" role="tab" data-tab="sheet" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5L14 3.5zM8 12h8v1.6H8V12zm0 3.4h8V17H8v-1.6z"/></svg>
       Sheet</button>
+    <button class="tab" role="tab" data-tab="history" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 4 4.1-4H6a7 7 0 1 1 2.05 4.95l-1.41 1.41A9 9 0 1 0 13 3zm-1 5v5l4.3 2.6.7-1.2-3.5-2V8H12z"/></svg>
+      History <span class="count" id="cntHistory">0</span></button>
   </div>
 </nav>
 
@@ -559,6 +570,10 @@ table.ot td.sig img{max-height:calc(var(--rowh,13mm) - 2.4mm); max-width:100%; o
         <input type="checkbox" id="mSort"><span class="track"></span>
         <span class="lbl">Keep entries in date order<small>Sorts the list and the sheet by date</small></span>
       </label>
+      <div class="subhead">History</div>
+      <p style="font-size:13px; color:var(--on-surface-var); margin:0 0 10px">
+        Save this period before starting a new one. Saved months stay on the History tab to reopen or print anytime.</p>
+      <button class="btn tonal small" id="btnSaveHistory2">Save this period to History</button>
       <div class="subhead">Start over</div>
       <button class="btn outlined small danger" id="btnReset">Clear everything and start a new sheet</button>
     </div>
@@ -597,6 +612,19 @@ table.ot td.sig img{max-height:calc(var(--rowh,13mm) - 2.4mm); max-width:100%; o
     <div class="preview-scroll" id="previewScroll">
       <div id="previewFit"><div class="preview-stage" id="previewStage"></div></div>
     </div>
+  </section>
+
+  <!-- ==================== HISTORY ==================== -->
+  <section class="panel" id="panel-history" hidden>
+    <div class="card flat" style="padding:14px 18px">
+      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
+        <p style="margin:0; font-size:13px; color:var(--on-surface-var); flex:1 1 260px">
+          Save the sheet you're working on here before starting a new period. Saved months keep
+          their own entries and signatures, and can be reopened to view, edit or print anytime.</p>
+        <button class="btn filled small" id="btnSaveHistory">Save current sheet to History</button>
+      </div>
+    </div>
+    <div id="historyList"></div>
   </section>
 </main>
 
@@ -778,7 +806,8 @@ function freshState() {
     },
     signatures: [],
     defaults: { sigReq: null, sigApp: null, sigStart: null, sigEnd: null, sigChk: null },
-    entries: []
+    entries: [],
+    history: []
   };
 }
 
@@ -867,7 +896,8 @@ function adopt(data) {
     meta: Object.assign(base.meta, data.meta || {}),
     signatures: Array.isArray(data.signatures) ? data.signatures : [],
     defaults: Object.assign(base.defaults, data.defaults || {}),
-    entries: Array.isArray(data.entries) ? data.entries.map(e => Object.assign(blankEntry(), e)) : []
+    entries: Array.isArray(data.entries) ? data.entries.map(e => Object.assign(blankEntry(), e)) : [],
+    history: Array.isArray(data.history) ? data.history : []
   };
 }
 
@@ -1210,15 +1240,18 @@ function bindDetails() {
   });
   qs('#btnReset').addEventListener('click', async () => {
     const ok = await confirmDialog('Start a new sheet?',
-      'Entries, signatures and details in this sheet will be cleared. Save the file first if you want to keep it.',
+      'Entries, signatures and details in this sheet will be cleared. Save it to History first if you want to keep it.',
       'Clear everything');
     if (!ok) return;
+    const hist = S.history;
     S = freshState();
+    S.history = hist;
     seedPeriod();
     openCards.clear();
     renderAll(); fillDetails();
     toast('New sheet ready');
   });
+  qs('#btnSaveHistory2').addEventListener('click', saveCurrentToHistory);
 }
 function seedPeriod() {
   if (S.meta.from && S.meta.to) return;
@@ -1531,6 +1564,114 @@ function bindSignatures() {
   });
 }
 
+/* ------------------------------ history panel ------------------------------
+   Saved months live in S.history -- snapshots of meta/signatures/defaults/
+   entries, stored inside the same per-account Supabase row as the working
+   sheet, so they need no separate table and follow the account everywhere. */
+function historyLabel() {
+  const a = S.meta.from, b = S.meta.to;
+  let label = (a && b) ? (fmtDate(a) + ' – ' + fmtDate(b)) : 'Untitled period';
+  if (S.meta.name) label += ' · ' + S.meta.name;
+  return label;
+}
+function saveCurrentToHistory() {
+  const snap = {
+    id: uid(),
+    label: historyLabel(),
+    savedAt: new Date().toISOString(),
+    data: JSON.parse(JSON.stringify({
+      meta: S.meta, signatures: S.signatures, defaults: S.defaults, entries: S.entries
+    }))
+  };
+  S.history = [snap, ...(S.history || [])];
+  renderHistory();
+  autosave();
+  toast('Saved to History');
+}
+function openHistory(id) {
+  const h = (S.history || []).find(x => x.id === id);
+  if (!h) return;
+  confirmDialog('Open “' + h.label + '”?',
+    'This replaces what’s on the Details, Entries and Sheet tabs right now. Save the current sheet to History first if you want to keep it.',
+    'Open').then(ok => {
+      if (!ok) return;
+      const hist = S.history;
+      const base = freshState();
+      S = {
+        meta: Object.assign(base.meta, JSON.parse(JSON.stringify(h.data.meta || {}))),
+        signatures: Array.isArray(h.data.signatures) ? JSON.parse(JSON.stringify(h.data.signatures)) : [],
+        defaults: Object.assign(base.defaults, JSON.parse(JSON.stringify(h.data.defaults || {}))),
+        entries: Array.isArray(h.data.entries)
+          ? JSON.parse(JSON.stringify(h.data.entries)).map(e => Object.assign(blankEntry(), e)) : [],
+        history: hist
+      };
+      openCards.clear();
+      refreshPeriod(); fillDetails();
+      renderAll();
+      setTab('sheet');
+      toast('Loaded “' + h.label + '”');
+    });
+}
+function deleteHistory(id) {
+  const h = (S.history || []).find(x => x.id === id);
+  if (!h) return;
+  confirmDialog('Delete “' + h.label + '”?', 'This cannot be undone.', 'Delete').then(ok => {
+    if (!ok) return;
+    S.history = S.history.filter(x => x.id !== id);
+    renderHistory();
+    autosave();
+    toast('Removed from History');
+  });
+}
+function renderHistory() {
+  const list = qs('#historyList');
+  if (!list) return;
+  const items = S.history || [];
+  qs('#cntHistory').textContent = String(items.length);
+  if (!items.length) {
+    list.innerHTML = '<div class="empty"><h3>No saved months yet</h3>' +
+      '<p>Save this sheet before starting a new period, and it stays here to reopen or print later.</p></div>';
+    return;
+  }
+  list.innerHTML = items.map(h => {
+    const entries = h.data.entries || [];
+    let off = 0, hol = 0;
+    entries.forEach(e => { const m = entryMinutes(e); isHoliday(e) ? hol += m : off += m; });
+    const saved = new Date(h.savedAt);
+    const savedTxt = isNaN(saved) ? '' :
+      (pad2(saved.getDate()) + '/' + pad2(saved.getMonth() + 1) + '/' + saved.getFullYear());
+    return '<div class="entry" data-hist="' + h.id + '">' +
+      '<div class="entry-head" style="cursor:default">' +
+        '<div class="entry-sum">' +
+          '<input type="text" class="hist-label" value="' + esc(h.label) + '" data-histrename aria-label="History label">' +
+          (savedTxt ? '<span style="font-size:12px;color:var(--on-surface-var)">Saved ' + savedTxt + '</span>' : '') +
+          '<span class="chip tot">' + fmtHM(off) + '</span>' +
+          '<span class="chip hol">' + fmtHM(hol) + '</span>' +
+          '<span style="font-size:12.5px;color:var(--on-surface-var)">' +
+            entries.length + (entries.length === 1 ? ' entry' : ' entries') + '</span>' +
+        '</div>' +
+        '<button class="btn small outlined" data-histopen>Open</button>' +
+        '<button class="btn icon small danger" data-histdel title="Delete">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' +
+      '</div></div>';
+  }).join('');
+}
+function bindHistory() {
+  qs('#btnSaveHistory').addEventListener('click', saveCurrentToHistory);
+  qs('#historyList').addEventListener('click', ev => {
+    const row = ev.target.closest('[data-hist]');
+    if (!row) return;
+    if (ev.target.closest('[data-histopen]')) openHistory(row.dataset.hist);
+    else if (ev.target.closest('[data-histdel]')) deleteHistory(row.dataset.hist);
+  });
+  qs('#historyList').addEventListener('input', ev => {
+    if (!ev.target.matches('[data-histrename]')) return;
+    const row = ev.target.closest('[data-hist]');
+    const h = (S.history || []).find(x => x.id === row.dataset.hist);
+    if (h) { h.label = ev.target.value; autosave(); }
+  });
+}
+
 /* ------------------------------ the printed sheet ------------------------------ */
 const COLS = [6.23, 3.46, 3.11, 3.29, 3.63, 5.88, 3.46, 3.11, 6.06, 3.29, 2.77, 26.30, 5.71, 4.84, 5.71, 5.71, 7.44];
 
@@ -1755,7 +1896,8 @@ function bindUploads() {
 function setTab(name) {
   activeTab = name;
   qsa('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
-  ['details', 'entries', 'sheet'].forEach(n => { qs('#panel-' + n).hidden = n !== name; });
+  ['details', 'entries', 'sheet', 'history'].forEach(n => { qs('#panel-' + n).hidden = n !== name; });
+  if (name === 'history') renderHistory();
   qs('#fabAdd').hidden = name !== 'entries';
   if (name === 'sheet') { renderSheet(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1766,6 +1908,7 @@ function renderAll() {
   renderEntries();
   renderSignatures();
   renderSheet();
+  renderHistory();
   autosave();
 }
 function changed(structural) {
@@ -1819,7 +1962,7 @@ function bindDialogs() {
 async function init() {
   qsa('.tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
   bindDetails(); bindEntries(); bindSignatures(); bindDialogs();
-  bindFiles(); bindUploads(); bindZoom();
+  bindFiles(); bindUploads(); bindZoom(); bindHistory();
 
   const had = await restore();
   if (!had) seedPeriod();
@@ -1830,7 +1973,7 @@ async function init() {
   window.scrollTo(0, 0);
 
   window.addEventListener('beforeprint', () => {
-    ['details', 'entries'].forEach(n => { qs('#panel-' + n).hidden = true; });
+    ['details', 'entries', 'history'].forEach(n => { qs('#panel-' + n).hidden = true; });
     qs('#panel-sheet').hidden = false;
   });
   window.addEventListener('afterprint', () => setTab(activeTab));
