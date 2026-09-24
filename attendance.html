@@ -220,6 +220,7 @@
 
   /* ---------- dialog ---------- */
   dialog{border:0; border-radius:28px; padding:24px; width:min(720px,92vw);
+         max-height:88vh; overflow-y:auto; box-sizing:border-box; margin:auto;
          background:var(--surface-3); color:var(--on-surface); box-shadow:var(--e3)}
   dialog::backdrop{background:rgba(0,0,0,.4)}
   dialog h2{font-size:22px; margin-bottom:12px}
@@ -288,7 +289,7 @@
               color:rgba(255,255,255,.88); border:1px solid rgba(255,255,255,.4); white-space:nowrap}
   .appswitch a:hover{background:rgba(255,255,255,.14)}
   .appswitch a.active{background:var(--on-primary); color:var(--primary); border-color:transparent}
-  @media (max-width:700px){ .appswitch{width:100%; order:3} }
+  @media (max-width:700px){ .appbar-in{flex-wrap:wrap} .appswitch{width:100%; order:3} }
 
   /* ---------- weekday dropdown (multi-select) ---------- */
   .menufield{position:relative}
