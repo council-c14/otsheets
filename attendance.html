@@ -130,6 +130,15 @@
   .chip.holiday .x:hover{opacity:1}
   .chip .dvn{font-family:var(--thaana); font-weight:400; font-size:14px}
 
+  /* ---------- format column editor ---------- */
+  .fmtcol-row{display:flex; gap:8px; align-items:center}
+  .fmtcol-row input{flex:1; min-width:0; height:40px; padding:0 10px; font:inherit; font-size:13.5px;
+                    color:var(--on-surface); background:var(--surface); border:1px solid var(--outline-variant);
+                    border-radius:4px}
+  .fmtcol-row input:focus{outline:none; border-color:var(--primary)}
+  .fmtcol-row input.grp{flex:0 0 30%}
+  .fmtcol-row .rm{flex:none}
+
   /* ---------- day list ---------- */
   .swatches{display:flex; flex-wrap:wrap; gap:16px; margin-top:12px}
   .swatches label{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--on-surface-variant)}
@@ -468,11 +477,10 @@
 <dialog id="formatDlg">
   <h2 id="fmtDlgTitle">New sheet format</h2>
   <div class="field"><input type="text" id="fmtName" placeholder=" "><label for="fmtName">Format name</label></div>
-  <div class="swatches" style="margin-top:16px; flex-direction:column; align-items:flex-start; gap:10px">
-    <label><input type="checkbox" id="fmtMorning" checked> Morning time columns</label>
-    <label><input type="checkbox" id="fmtEvening" checked> Evening time columns</label>
-    <label><input type="checkbox" id="fmtSupervisor" checked> Supervisor signature column</label>
-  </div>
+  <p class="hint" style="margin:16px 0 0">Columns printed after Date and Day. Give two or more the same group to
+    print one heading over all of them (like "Morning" over start/end/sign) — leave it blank for a plain column.</p>
+  <div id="fmtColumnsList" style="margin-top:10px; display:flex; flex-direction:column; gap:8px"></div>
+  <div class="btnset" style="margin-top:10px"><button class="btn text" type="button" id="fmtAddColumn">+ Add column</button></div>
   <p class="hint">Formats control the PDF / print copy. The Word file always follows the council's standard layout.</p>
   <div class="dlgfoot">
     <button class="btn text" id="fmtCancel">Cancel</button>
@@ -686,7 +694,11 @@ const DEFAULTS = () => {
     ],
     formats:[
       {id:'standard', name:'Standard (council grid)', builtin:true,
-       cols:{morning:true, evening:true, supervisor:true}},
+       columns:[
+         {group:'ހެނދުނު', name:'ފެށި ގަޑި'}, {group:'ހެނދުނު', name:'ނިމުނު ގަޑި'}, {group:'ހެނދުނު', name:'ސޮއި'},
+         {group:'ހަވީރު',  name:'ފެށި ގަޑި'}, {group:'ހަވީރު',  name:'ނިމުނު ގަޑި'}, {group:'ހަވީރު',  name:'ސޮއި'},
+         {group:'',        name:'ސުޕަވައިޒަރ ސޮއި'},
+       ]},
     ],
     formatId:'standard',
     staff: PAYLOAD.staff.map(s => ({...s, on:true, group:'sweepers'}))
@@ -702,10 +714,26 @@ let state = (() => {
 })();
 if (!Array.isArray(state.holidays)) state.holidays = [];
 migrate();
+
+/** Formats saved before column editing existed used fixed
+    morning/evening/supervisor checkboxes; turn those into the same
+    columns the new editor works with, so nobody's saved formats break. */
+function migrateFormatColumns(f){
+  if (Array.isArray(f.columns) && f.columns.length) return;
+  const cols = f.cols || {};
+  const columns = [];
+  if (cols.morning) columns.push({group:'ހެނދުނު', name:'ފެށި ގަޑި'}, {group:'ހެނދުނު', name:'ނިމުނު ގަޑި'}, {group:'ހެނދުނު', name:'ސޮއި'});
+  if (cols.evening) columns.push({group:'ހަވީރު', name:'ފެށި ގަޑި'}, {group:'ހަވީރު', name:'ނިމުނު ގަޑި'}, {group:'ހަވީރު', name:'ސޮއި'});
+  if (cols.supervisor) columns.push({group:'', name:'ސުޕަވައިޒަރ ސޮއި'});
+  f.columns = columns.length ? columns : [{group:'', name:''}];
+  delete f.cols;
+}
+
 function migrate(){
   if (!Array.isArray(state.groups) || !state.groups.length) state.groups = DEFAULTS().groups;
   if (!Array.isArray(state.signatories)) state.signatories = DEFAULTS().signatories;
   if (!Array.isArray(state.formats) || !state.formats.length) state.formats = DEFAULTS().formats;
+  state.formats.filter(f => f.kind !== 'uploaded').forEach(migrateFormatColumns);
   if (!state.formats.some(f => f.id === state.formatId)) state.formatId = state.formats[0].id;
   // a group title is an override; one that merely repeats the global title
   // would silently swallow edits made in Sheet setup. Earlier builds shipped
@@ -1406,15 +1434,26 @@ function renderDays(){
 
 const currentFormat = () => state.formats.find(f => f.id === state.formatId) || state.formats[0];
 
-/** HTML for one staff member's sheet, following the given format's column set.
+/** Merges consecutive columns that share a non-empty group into one
+    spanning header cell, so e.g. three "Morning" columns print under one
+    "Morning" heading; a column with no group prints as its own header. */
+function groupFormatColumns(columns){
+  const out = [];
+  for (const col of columns){
+    const last = out[out.length - 1];
+    if (col.group && last && last.group === col.group) last.cols.push(col.name);
+    else out.push({group: col.group || '', cols: [col.name]});
+  }
+  return out;
+}
+
+/** HTML for one staff member's sheet, following the given format's columns.
     Shared by the on-screen preview and the multi-page PDF/print build. */
 function sheetHTML(p, fmt){
   const days = printedDays();
-  const cols = fmt.cols;
-  const groups = [];
-  if (cols.morning) groups.push({label:'ހެނދުނު', sub:['ފެށި ގަޑި','ނިމުނު ގަޑި','ސޮއި']});
-  if (cols.evening) groups.push({label:'ހަވީރު',   sub:['ފެށި ގަޑި','ނިމުނު ގަޑި','ސޮއި']});
-  const dataCols = groups.reduce((n,g) => n+g.sub.length, 0) + (cols.supervisor ? 1 : 0);
+  const columns = fmt.columns && fmt.columns.length ? fmt.columns : [{group:'', name:''}];
+  const headerGroups = groupFormatColumns(columns);
+  const dataCols = columns.length;
   const blanks = '<td></td>'.repeat(dataCols);
   return `
     <img class="emb" src="data:image/png;base64,${PAYLOAD.emblem}" alt="">
@@ -1428,9 +1467,11 @@ function sheetHTML(p, fmt){
       <span>އަސާސީ މުސާރަ: ${escHtml(p.salary)}</span></div>
     <table>
       <tr><th rowspan="2">ތާރީޚް</th><th rowspan="2">ދުވަސް</th>
-          ${groups.map(g => `<th colspan="${g.sub.length}">${g.label}</th>`).join('')}
-          ${cols.supervisor ? '<th rowspan="2">ސުޕަވައިޒަރ ސޮއި</th>' : ''}</tr>
-      <tr>${groups.map(g => g.sub.map(s => `<th>${s}</th>`).join('')).join('')}</tr>
+          ${headerGroups.map(g => g.group
+              ? `<th colspan="${g.cols.length}">${escHtml(g.group)}</th>`
+              : g.cols.map(c => `<th rowspan="2">${escHtml(c)}</th>`).join('')
+            ).join('')}</tr>
+      <tr>${headerGroups.map(g => g.group ? g.cols.map(c => `<th>${escHtml(c)}</th>`).join('') : '').join('')}</tr>
       ${days.map(d => `<tr${d.skip ? ` style="background:${d.kind === 'hol' ? state.holShade : state.restShade}"` : ''}><td class="d">${d.date}</td><td>${d.day}</td>` +
           (d.skip ? `<td colspan="${dataCols || 1}" class="note">${escHtml(d.note)}</td>` : blanks) +
         `</tr>`).join('')}
@@ -1635,49 +1676,73 @@ document.getElementById('formatDelete').onclick = () => {
 };
 /** null while the dialog is adding a new format; the format's id while editing one. */
 let editingFormatId = null;
+/** The column list the dialog is currently editing, as plain {group,name} objects. */
+let editingColumns = [];
+
+function renderFmtColumnsList(){
+  const host = document.getElementById('fmtColumnsList');
+  host.textContent = '';
+  editingColumns.forEach((col, i) => {
+    const row = el('div', 'fmtcol-row');
+    const grp = document.createElement('input');
+    grp.className = 'grp'; grp.placeholder = 'Group (optional)'; grp.value = col.group || '';
+    grp.oninput = () => { col.group = grp.value; };
+    const name = document.createElement('input');
+    name.placeholder = 'Column name'; name.value = col.name || '';
+    name.oninput = () => { col.name = name.value; };
+    const rm = iconBtn('✕', 'Remove this column', () => {
+      editingColumns.splice(i, 1); renderFmtColumnsList();
+    }, false, 'rm danger');
+    row.append(grp, name, rm);
+    host.appendChild(row);
+  });
+}
+document.getElementById('fmtAddColumn').onclick = () => {
+  editingColumns.push({group:'', name:''});
+  renderFmtColumnsList();
+  document.querySelectorAll('#fmtColumnsList .fmtcol-row input:not(.grp)').item(editingColumns.length - 1)?.focus();
+};
 
 document.getElementById('formatAdd').onclick = () => {
   editingFormatId = null;
+  editingColumns = currentFormat().kind === 'uploaded'
+    ? DEFAULTS().formats[0].columns.map(c => ({...c}))
+    : currentFormat().columns.map(c => ({...c}));
   document.getElementById('fmtDlgTitle').textContent = 'New sheet format';
   document.getElementById('fmtSave').textContent = 'Save format';
   document.getElementById('fmtName').value = '';
-  document.getElementById('fmtMorning').checked = true;
-  document.getElementById('fmtEvening').checked = true;
-  document.getElementById('fmtSupervisor').checked = true;
+  renderFmtColumnsList();
   document.getElementById('formatDlg').showModal();
 };
 document.getElementById('formatEdit').onclick = () => {
   const fmt = currentFormat();
   if (fmt.kind === 'uploaded') return;
   editingFormatId = fmt.id;
+  editingColumns = fmt.columns.map(c => ({...c}));
   document.getElementById('fmtDlgTitle').textContent = `Edit “${fmt.name}”`;
   document.getElementById('fmtSave').textContent = 'Save changes';
   document.getElementById('fmtName').value = fmt.name;
-  document.getElementById('fmtMorning').checked = !!fmt.cols.morning;
-  document.getElementById('fmtEvening').checked = !!fmt.cols.evening;
-  document.getElementById('fmtSupervisor').checked = !!fmt.cols.supervisor;
+  renderFmtColumnsList();
   document.getElementById('formatDlg').showModal();
 };
 document.getElementById('fmtCancel').onclick = () => document.getElementById('formatDlg').close();
 document.getElementById('fmtSave').onclick = () => {
   const name = document.getElementById('fmtName').value.trim();
   if (!name) return toast('Give the format a name', true);
-  const cols = {
-    morning: document.getElementById('fmtMorning').checked,
-    evening: document.getElementById('fmtEvening').checked,
-    supervisor: document.getElementById('fmtSupervisor').checked,
-  };
-  if (!cols.morning && !cols.evening && !cols.supervisor) return toast('Keep at least one column', true);
+  const columns = editingColumns
+    .map(c => ({group: c.group.trim(), name: c.name.trim()}))
+    .filter(c => c.name);
+  if (!columns.length) return toast('Add at least one column with a name', true);
 
   if (editingFormatId){
     const fmt = state.formats.find(f => f.id === editingFormatId);
-    fmt.name = name; fmt.cols = cols;
+    fmt.name = name; fmt.columns = columns;
     document.getElementById('formatDlg').close();
     renderFormats(); renderPreview(); save();
     toast(`“${name}” updated`);
   } else {
     const id = 'f' + Date.now().toString(36) + Math.floor(Math.random()*1e3).toString(36);
-    state.formats.push({id, name, cols});
+    state.formats.push({id, name, columns});
     state.formatId = id;
     document.getElementById('formatDlg').close();
     renderFormats(); renderPreview(); save();
