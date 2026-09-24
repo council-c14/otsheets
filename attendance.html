@@ -209,8 +209,9 @@
   .sheet .meta{display:flex; justify-content:space-between; gap:20px; font-size:12.5px; line-height:1.7}
   .sheet .ltr{direction:ltr; unicode-bidi:isolate; font-family:var(--ui); font-size:11px}
   .sheet table{border-collapse:collapse; width:100%; margin-top:8px; table-layout:fixed}
-  .sheet th,.sheet td{border:1px solid #000; padding:1px 3px; font-size:11px; height:16px; font-weight:400; line-height:1.1}
-  .sheet th{text-align:center}
+  .sheet th,.sheet td{border:1px solid #000; padding:1px 3px; font-size:11px; font-weight:400; line-height:1.1}
+  .sheet th{height:16px; text-align:center}
+  .sheet td{height:var(--rowh, 16px); print-color-adjust:exact; -webkit-print-color-adjust:exact}
   .sheet td.note{text-align:center; font-size:11px}
   .sheet td.d{direction:ltr; unicode-bidi:isolate; font-family:var(--ui); font-size:10px;
               text-align:center; font-variant-numeric:tabular-nums}
@@ -270,6 +271,7 @@
   @media print{
     body{background:#fff}
     .appbar,.card,.btnset,.sheetwrap,#acctChip,#toast,#authGate{display:none !important}
+    html,body,.sheet td{print-color-adjust:exact !important; -webkit-print-color-adjust:exact !important}
   }
   #printSheets{display:none}
   body.printing-multi .sheetwrap{display:none}
@@ -1456,6 +1458,13 @@ function sheetHTML(p, fmt){
   const headerGroups = groupFormatColumns(columns);
   const dataCols = columns.length;
   const blanks = '<td></td>'.repeat(dataCols);
+  // Rows fill the rest of one A4 page after the fixed header/meta/table-header/
+  // signature block, however many days are in the printed period, so a short
+  // period gets generously tall (easy to sign) rows and a full month still
+  // fits exactly one page.
+  const PAGE_BUDGET_PX = 950, FIXED_OVERHEAD_PX = 340, MIN_ROWH = 13, MAX_ROWH = 26;
+  const rowh = Math.max(MIN_ROWH, Math.min(MAX_ROWH,
+    (PAGE_BUDGET_PX - FIXED_OVERHEAD_PX) / Math.max(1, days.length))).toFixed(1);
   return `
     <img class="emb" src="data:image/png;base64,${PAYLOAD.emblem}" alt="">
     <div class="org">މިލަދުންމަޑުލުއުތުރުބުރީ މާއުނގޫދޫ ކައުންސިލްގެ އިދާރާ<br>ށ. މާއުނގޫދޫ، ދިވެހިރާއްޖެ</div>
@@ -1466,7 +1475,7 @@ function sheetHTML(p, fmt){
       <span>އައި.ޑީ. ކާޑު ނަންބަރު: <span class="ltr">${escHtml(p.id)}</span></span></div>
     <div class="meta"><span>މަޤާމުގެ ނަން: ${escHtml(p.job)}</span>
       <span>އަސާސީ މުސާރަ: ${escHtml(p.salary)}</span></div>
-    <table>
+    <table style="--rowh:${rowh}px">
       <tr><th rowspan="2">ތާރީޚް</th><th rowspan="2">ދުވަސް</th>
           ${headerGroups.map(g => g.group
               ? `<th colspan="${g.cols.length}">${escHtml(g.group)}</th>`
