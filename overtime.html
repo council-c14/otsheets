@@ -793,7 +793,7 @@ function isHoliday(e) {
   if (e.dayType === 'holiday') return true;
   if (e.dayType === 'official') return false;
   const w = dowOf(e);
-  return w === 5 || w === 6;              /* Friday & Saturday */
+  return w === 5;                         /* Friday */
 }
 function dayName(e) {
   if (!e.dayAuto) return e.dayText || '';
@@ -1285,7 +1285,7 @@ function entryHTML(e, i) {
           '<div class="hint">' + (e.dayAuto ? 'Filled from the date' : 'Typed by hand') + '</div></div>' +
         '<div class="tf"><label>Day type</label>' +
           '<select data-f="dayType">' +
-            '<option value="auto"' + (e.dayType === 'auto' ? ' selected' : '') + '>Automatic (Fri &amp; Sat are off)</option>' +
+            '<option value="auto"' + (e.dayType === 'auto' ? ' selected' : '') + '>Automatic (Fri is off)</option>' +
             '<option value="official"' + (e.dayType === 'official' ? ' selected' : '') + '>Official day — ރަސްމީ</option>' +
             '<option value="holiday"' + (e.dayType === 'holiday' ? ' selected' : '') + '>Day off — ބަންދު</option>' +
           '</select></div>' +
