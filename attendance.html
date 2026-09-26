@@ -671,6 +671,13 @@ function periodDays(){
 }
 const sheetDays  = () => periodDays().filter(d => !d.skip);   // days actually worked
 const printedDays = () => periodDays();                       // every row on the sheet
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* Shading colours are stored/synced as plain strings (from a <input type=color>,
+   a shared cloud row, or an imported backup file) and get spliced straight into
+   a style="" attribute when the sheet is built -- only ever accept a strict
+   #rrggbb so an attacker-crafted value can never break out of that attribute. */
+const safeHex = v => /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#ffffff';
 const monthLabel = () => state.month.trim() ||
   `${DV_MONTHS[parseDate(state.to).getMonth()]} ${parseDate(state.to).getFullYear()}`;
 
@@ -734,6 +741,12 @@ function migrateFormatColumns(f){
 }
 
 function migrate(){
+  // restShade/holShade come from a colour picker normally, but this state can
+  // also arrive from a shared cloud row or an imported backup file -- neither
+  // is trustworthy, and both values get spliced into a style="" attribute
+  // when the sheet renders, so anything that isn't a plain #rrggbb is dropped.
+  state.restShade = safeHex(state.restShade);
+  state.holShade = safeHex(state.holShade);
   if (!Array.isArray(state.groups) || !state.groups.length) state.groups = DEFAULTS().groups;
   if (!Array.isArray(state.signatories)) state.signatories = DEFAULTS().signatories;
   if (!Array.isArray(state.formats) || !state.formats.length) state.formats = DEFAULTS().formats;
@@ -1162,7 +1175,6 @@ async function generate(mode){
 /* ============================================================ rendering */
 const el = (tag, cls, text) => { const n = document.createElement(tag);
   if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-const escHtml = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 
 function renderRoster(){
   const host = document.getElementById('groupList');
@@ -1483,7 +1495,7 @@ function sheetHTML(p, fmt){
               : g.cols.map(c => `<th rowspan="2">${escHtml(c)}</th>`).join('')
             ).join('')}</tr>
       <tr>${headerGroups.map(g => g.group ? g.cols.map(c => `<th>${escHtml(c)}</th>`).join('') : '').join('')}</tr>
-      ${days.map(d => `<tr${d.skip ? ` style="background:${d.kind === 'hol' ? state.holShade : state.restShade}"` : ''}><td class="d">${d.date}</td><td>${d.day}</td>` +
+      ${days.map(d => `<tr${d.skip ? ` style="background:${escHtml(safeHex(d.kind === 'hol' ? state.holShade : state.restShade))}"` : ''}><td class="d">${d.date}</td><td>${d.day}</td>` +
           (d.skip ? `<td colspan="${dataCols || 1}" class="note">${escHtml(d.note)}</td>` : blanks) +
         `</tr>`).join('')}
     </table>
@@ -1798,9 +1810,7 @@ document.getElementById('restoreFile').onchange = async e => {
     if (!Array.isArray(data.staff)) throw new Error('no staff list in that file');
     state = {...DEFAULTS(), ...data};
     if (!Array.isArray(state.holidays)) state.holidays = [];
-    if (!Array.isArray(state.signatories)) state.signatories = DEFAULTS().signatories;
-    if (!Array.isArray(state.formats) || !state.formats.length) state.formats = DEFAULTS().formats;
-    if (!state.formats.some(f => f.id === state.formatId)) state.formatId = state.formats[0].id;
+    migrate();
     ['title','month','offNote','restShade','holShade','chkName','chkPost','aprName','aprPost','from','to']
       .forEach(k => document.getElementById(k).value = state[k]);
     renderAll(); save();

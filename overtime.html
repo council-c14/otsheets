@@ -918,7 +918,21 @@ async function restore() {
   } catch (_) {}
   return false;
 }
+/* Signature/logo images are only ever meant to be a data: URL -- from the
+   drawing pad's canvas.toDataURL() or a FileReader on an uploaded photo --
+   but they also arrive from "Open a saved sheet file", a plain JSON file
+   anyone could hand-edit. Every one of these gets spliced straight into an
+   <img src="..."> string, so anything else is rejected outright rather than
+   escaped: a non-image value has no legitimate use here. */
+const isImageDataUrl = s => typeof s === 'string' &&
+  /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(s);
+function sanitizeImportedImages(obj) {
+  if (obj.meta && !isImageDataUrl(obj.meta.logo)) delete obj.meta.logo;
+  if (Array.isArray(obj.signatures)) obj.signatures = obj.signatures.filter(s => isImageDataUrl(s && s.data));
+  return obj;
+}
 function adopt(data) {
+  sanitizeImportedImages(data);
   const base = freshState();
   S = {
     meta: Object.assign(base.meta, data.meta || {}),
@@ -1143,7 +1157,7 @@ function renderPicker() {
                  '<div class="ph">Leave blank</div><div class="nm">No signature</div></button>'];
   for (const s of S.signatures) {
     cells.push('<button class="pick' + (cur === s.id ? ' sel' : '') + '" data-sig="' + s.id + '">' +
-      '<div class="ph"><img src="' + s.data + '" alt=""></div>' +
+      '<div class="ph"><img src="' + esc(s.data) + '" alt=""></div>' +
       '<div class="nm">' + esc(s.name) + '</div></button>');
   }
   qs('#pickGrid').innerHTML = cells.join('');
@@ -1193,7 +1207,7 @@ function fillDetails() {
   qs('#mBismillahSize').disabled = !S.meta.showBismillah;
   qs('#mSort').checked = !!S.meta.sortByDate;
   const st = sigById(S.meta.staffSig);
-  qs('#staffSigPrev').innerHTML = st ? '<img src="' + st.data + '" alt="">' : '<span>Not set</span>';
+  qs('#staffSigPrev').innerHTML = st ? '<img src="' + esc(st.data) + '" alt="">' : '<span>Not set</span>';
   qs('#staffSigClear').disabled = !S.meta.staffSig;
   qs('#logoPrev').src = S.meta.logo || LOGO_DEFAULT;
   qs('#brandMark').src = S.meta.logo || LOGO_DEFAULT;
@@ -1304,7 +1318,7 @@ function sigBoxHTML(e, role) {
   const s = sigById(e[role.key]);
   return '<button type="button" class="sig-slot' + (s ? ' set' : '') + '" data-sigslot="' + role.key + '">' +
     '<div class="role">' + role.en + '<b>' + role.dv + '</b></div>' +
-    '<div class="box">' + (s ? '<img src="' + s.data + '" alt="' + esc(s.name) + '">' : '<span>Tap to add</span>') + '</div>' +
+    '<div class="box">' + (s ? '<img src="' + esc(s.data) + '" alt="' + esc(s.name) + '">' : '<span>Tap to add</span>') + '</div>' +
     '</button>';
 }
 
@@ -1537,7 +1551,7 @@ function renderSignatures() {
   } else {
     lib.innerHTML = '<div class="sig-grid">' + S.signatures.map(s =>
       '<div class="sig-card" data-sig="' + s.id + '">' +
-        '<div class="prev"><img src="' + s.data + '" alt="' + esc(s.name) + '"></div>' +
+        '<div class="prev"><img src="' + esc(s.data) + '" alt="' + esc(s.name) + '"></div>' +
         '<div class="meta"><input type="text" value="' + esc(s.name) + '" data-rename aria-label="Signature label">' +
           '<button class="btn icon small danger" data-sigdel title="Delete">' +
           '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' +
@@ -1548,7 +1562,7 @@ function renderSignatures() {
     const s = sigById(S.defaults[r.key]);
     return '<div class="role-row" data-role="' + r.key + '">' +
       '<div class="rname"><div class="dv">' + r.dv + '</div><small>' + r.en + '</small></div>' +
-      '<div class="rprev">' + (s ? '<img src="' + s.data + '" alt="">' : '<span>Blank</span>') + '</div>' +
+      '<div class="rprev">' + (s ? '<img src="' + esc(s.data) + '" alt="">' : '<span>Blank</span>') + '</div>' +
       '<button class="btn small outlined" data-rolepick>Change</button>' +
       '<button class="btn small tonal" data-roleall>Apply to all</button>' +
     '</div>';
@@ -1630,9 +1644,13 @@ function saveCurrentToHistory() {
    S.history themselves right after. */
 function stateFromSnapshot(h) {
   const base = freshState();
+  const cloned = sanitizeImportedImages({
+    meta: JSON.parse(JSON.stringify(h.data.meta || {})),
+    signatures: JSON.parse(JSON.stringify(Array.isArray(h.data.signatures) ? h.data.signatures : []))
+  });
   return {
-    meta: Object.assign(base.meta, JSON.parse(JSON.stringify(h.data.meta || {}))),
-    signatures: Array.isArray(h.data.signatures) ? JSON.parse(JSON.stringify(h.data.signatures)) : [],
+    meta: Object.assign(base.meta, cloned.meta),
+    signatures: cloned.signatures,
     defaults: Object.assign(base.defaults, JSON.parse(JSON.stringify(h.data.defaults || {}))),
     entries: Array.isArray(h.data.entries)
       ? JSON.parse(JSON.stringify(h.data.entries)).map(e => Object.assign(blankEntry(), e)) : [],
@@ -1788,7 +1806,7 @@ function sheetHeadHTML() {
     (m.showBismillah && m.bismillah
       ? '<div class="bismillah" style="font-size:' + (+m.bismillahSize || 20) + 'pt">' + esc(m.bismillah) + '</div>'
       : '') +
-    (m.logo ? '<img class="emblem" src="' + m.logo + '" alt="">' : '') +
+    (m.logo ? '<img class="emblem" src="' + esc(m.logo) + '" alt="">' : '') +
     '<div class="office">' + esc(m.office) + '</div>' +
     '<div class="island">' + esc(m.island) + '</div>' +
     '<div class="title">' + esc(m.title) + '</div>' +
@@ -1837,7 +1855,7 @@ function timeCells(t) {
 
 function sigCell(id, cls) {
   const s = sigById(id);
-  return '<td class="sig ' + (cls || '') + '">' + (s ? '<img src="' + s.data + '" alt="">' : '') + '</td>';
+  return '<td class="sig ' + (cls || '') + '">' + (s ? '<img src="' + esc(s.data) + '" alt="">' : '') + '</td>';
 }
 
 /* the two boxes under ގަޑި are hours (right) and minutes (left), read right to left */
